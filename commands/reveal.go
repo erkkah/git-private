@@ -14,9 +14,10 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/agessh"
-	"github.com/erkkah/git-secret/utils"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/erkkah/git-private/utils"
 )
 
 func Reveal(args []string) error {

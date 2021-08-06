@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/erkkah/git-secret/utils"
+	"github.com/erkkah/git-private/utils"
 )
 
 func Status(_ []string) error {

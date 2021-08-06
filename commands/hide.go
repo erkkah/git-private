@@ -12,7 +12,8 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/agessh"
-	"github.com/erkkah/git-secret/utils"
+
+	"github.com/erkkah/git-private/utils"
 )
 
 func Hide(args []string) error {
@@ -46,7 +47,7 @@ func Hide(args []string) error {
 
 	for _, file := range filesToHide {
 		if strings.HasSuffix(file, utils.PrivateExtension) {
-			return fmt.Errorf("cannot encrypt secret version of file:, %q", file)
+			return fmt.Errorf("cannot encrypt private file:, %q", file)
 		}
 
 		err := encrypt(file)

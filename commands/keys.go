@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"filippo.io/age"
-	"github.com/erkkah/git-secret/utils"
+	"github.com/erkkah/git-private/utils"
 	"golang.org/x/crypto/ssh"
 )
 

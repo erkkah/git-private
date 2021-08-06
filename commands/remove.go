@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/erkkah/git-secret/utils"
+	"github.com/erkkah/git-private/utils"
 )
 
 func Remove(files []string) error {

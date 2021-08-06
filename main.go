@@ -5,8 +5,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/erkkah/git-secret/commands"
-	"github.com/erkkah/git-secret/utils"
+	"github.com/erkkah/git-private/commands"
+	"github.com/erkkah/git-private/utils"
 )
 
 const errorExitCode = 126

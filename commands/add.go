@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 
-	"github.com/erkkah/git-secret/utils"
+	"github.com/erkkah/git-private/utils"
 )
 
 func Add(files []string) error {

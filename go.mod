@@ -1,4 +1,4 @@
-module github.com/erkkah/git-secret
+module github.com/erkkah/git-private
 
 go 1.16
 
