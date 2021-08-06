@@ -29,19 +29,19 @@ func main() {
 	}
 }
 
-func verifySecretsDirIsNotIgnored() error {
-	secretsDir, err := utils.StateDir()
+func verifyStateDirIsNotIgnored() error {
+	stateDir, err := utils.StateDir()
 	if err != nil {
 		return err
 	}
-	ignored, err := utils.IsGitIgnored(secretsDir)
+	ignored, err := utils.IsGitIgnored(stateDir)
 
 	if err != nil {
 		return err
 	}
 
 	if ignored {
-		return fmt.Errorf("%q is in .gitignore", secretsDir)
+		return fmt.Errorf("%q is in .gitignore", stateDir)
 	}
 
 	return nil
@@ -53,22 +53,12 @@ func checkSetup() error {
 		return err
 	}
 	if !inTree {
-		return fmt.Errorf("not in dir with git repo. Use 'git init' or 'git clone', then in repo use 'git secret init'")
+		return fmt.Errorf("not in dir with git repo. Use 'git init' or 'git clone', then in repo use 'git %s init'", utils.ToolName)
 	}
 
-	err = verifySecretsDirIsNotIgnored()
+	err = verifyStateDirIsNotIgnored()
 	if err != nil {
 		return err
-	}
-
-	secretsDir, err := utils.StateDir()
-	if err != nil {
-		return err
-	}
-	secRing := path.Join(secretsDir, "secring.gpg")
-	stat, err := os.Stat(secRing)
-	if err == nil && stat.Size() > 0 {
-		return fmt.Errorf("it seems that someone has imported a secret key")
 	}
 
 	return nil

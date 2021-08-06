@@ -100,8 +100,8 @@ func Reveal(args []string) error {
 	}
 
 	for _, file := range filesToReveal {
-		if strings.HasSuffix(file, utils.SecretsExtension) {
-			return fmt.Errorf("cannot decrypt to secret version of file:, %q", file)
+		if strings.HasSuffix(file, utils.PrivateExtension) {
+			return fmt.Errorf("cannot decrypt to private version of file:, %q", file)
 		}
 
 		// ??? check status and follow force flag
@@ -122,9 +122,9 @@ func decrypt(file string, identity age.Identity) error {
 	}
 
 	fullPath := path.Join(root, file)
-	secretPath := fullPath + utils.SecretsExtension
+	privatePath := fullPath + utils.PrivateExtension
 
-	encrypted, err := os.Open(secretPath)
+	encrypted, err := os.Open(privatePath)
 	if err != nil {
 		return err
 	}

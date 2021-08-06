@@ -67,10 +67,10 @@ func removeFile(file string) error {
 		return err
 	}
 
-	secretFile := file + utils.SecretsExtension
-	if utils.Exists(secretFile) {
+	privateFile := file + utils.PrivateExtension
+	if utils.Exists(privateFile) {
 		// revealFile(file) ???
-		err := os.Remove(secretFile)
+		err := os.Remove(privateFile)
 		if err != nil {
 			return err
 		}

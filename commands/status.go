@@ -34,9 +34,9 @@ func Status(_ []string) error {
 		if file.Hash == "" {
 			status = notHidden
 		} else {
-			privateFile := fullPath + utils.SecretsExtension
+			privateFile := fullPath + utils.PrivateExtension
 			if !utils.Exists(privateFile) {
-				status = hiddenSecretMissing
+				status = hiddenPrivateMissing
 			} else if !utils.Exists(fullPath) {
 				status = hiddenNotRevealed
 			} else {
@@ -64,7 +64,7 @@ const (
 	hiddenInSync
 	hiddenModified
 	hiddenNotRevealed
-	hiddenSecretMissing
+	hiddenPrivateMissing
 )
 
 func (code statusCode) String() string {
@@ -77,7 +77,7 @@ func (code statusCode) String() string {
 		return "hidden, modified"
 	case hiddenNotRevealed:
 		return "hidden, not revealed"
-	case hiddenSecretMissing:
+	case hiddenPrivateMissing:
 		return "WARNING: private file missing!"
 	default:
 		return "unknown"

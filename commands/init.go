@@ -8,16 +8,16 @@ import (
 )
 
 func Init(_ []string) error {
-	secretsDir, err := utils.StateDir()
+	stateDir, err := utils.StateDir()
 	if err != nil {
 		return err
 	}
 
-	if utils.Exists(secretsDir) {
+	if utils.Exists(stateDir) {
 		return fmt.Errorf("already initialized")
 	}
 
-	err = os.MkdirAll(secretsDir, 0770)
+	err = os.MkdirAll(stateDir, 0770)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func Init(_ []string) error {
 		return err
 	}
 
-	err = utils.GitAddIgnorePattern(fmt.Sprintf("!*%s", utils.SecretsExtension))
+	err = utils.GitAddIgnorePattern(fmt.Sprintf("!*%s", utils.PrivateExtension))
 	if err != nil {
 		return err
 	}

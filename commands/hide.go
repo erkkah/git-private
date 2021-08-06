@@ -45,7 +45,7 @@ func Hide(args []string) error {
 	}
 
 	for _, file := range filesToHide {
-		if strings.HasSuffix(file, utils.SecretsExtension) {
+		if strings.HasSuffix(file, utils.PrivateExtension) {
 			return fmt.Errorf("cannot encrypt secret version of file:, %q", file)
 		}
 
@@ -70,7 +70,7 @@ func encrypt(file string) error {
 	}
 
 	fullPath := path.Join(root, file)
-	secretPath := fullPath + utils.SecretsExtension
+	privatePath := fullPath + utils.PrivateExtension
 
 	recipients, err := getRecipients()
 	if len(recipients) == 0 {
@@ -98,7 +98,7 @@ func encrypt(file string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(secretPath, buf.Bytes(), 0600)
+	err = ioutil.WriteFile(privatePath, buf.Bytes(), 0600)
 	if err != nil {
 		return err
 	}

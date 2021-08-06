@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const SecretsExtension = ".secret"
+const PrivateExtension = ".private"
 const ToolName = "git-private"
 
 func privateDir() string {
