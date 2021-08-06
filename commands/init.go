@@ -8,7 +8,7 @@ import (
 )
 
 func Init(_ []string) error {
-	secretsDir, err := utils.SecretsDir()
+	secretsDir, err := utils.StateDir()
 	if err != nil {
 		return err
 	}

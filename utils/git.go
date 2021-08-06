@@ -125,6 +125,7 @@ func IsGitIgnored(fileName string) (bool, error) {
 	return false, err
 }
 
+// RepoRelative converts the given path to a path relative to the current repo.
 func RepoRelative(path string) (string, error) {
 	var err error
 

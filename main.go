@@ -30,7 +30,7 @@ func main() {
 }
 
 func verifySecretsDirIsNotIgnored() error {
-	secretsDir, err := utils.SecretsDir()
+	secretsDir, err := utils.StateDir()
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func checkSetup() error {
 		return err
 	}
 
-	secretsDir, err := utils.SecretsDir()
+	secretsDir, err := utils.StateDir()
 	if err != nil {
 		return err
 	}
@@ -93,6 +93,7 @@ func runCommand(cmd string, args []string) error {
 		"hide":   commands.Hide,
 		"reveal": commands.Reveal,
 		"keys":   commands.Keys,
+		"status": commands.Status,
 	}
 	command, found := cmds[cmd]
 	if !found {

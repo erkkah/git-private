@@ -7,15 +7,18 @@ import (
 	"path/filepath"
 )
 
-func secretsDir() string {
-	if val, exists := os.LookupEnv("SECRETS_DIR"); exists {
+const SecretsExtension = ".secret"
+const ToolName = "git-private"
+
+func privateDir() string {
+	if val, exists := os.LookupEnv("GIT_PRIVATE_DIR"); exists {
 		return val
 	}
-	return ".gitsecrets"
+	return ".gitprivate"
 }
 
-func SecretsDir() (string, error) {
-	dir := secretsDir()
+func StateDir() (string, error) {
+	dir := privateDir()
 	if filepath.IsAbs(dir) {
 		return dir, nil
 	}
@@ -23,12 +26,12 @@ func SecretsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := path.Join(root, secretsDir())
+	path := path.Join(root, privateDir())
 	return path, nil
 }
 
 func KeysFile() (string, error) {
-	dir, err := SecretsDir()
+	dir, err := StateDir()
 	if err != nil {
 		return "", err
 	}
@@ -36,22 +39,20 @@ func KeysFile() (string, error) {
 }
 
 func PathsFile() (string, error) {
-	dir, err := SecretsDir()
+	dir, err := StateDir()
 	if err != nil {
 		return "", err
 	}
 	return path.Join(dir, "paths.json"), nil
 }
 
-const SecretsExtension = ".secret"
-
 func EnsureInitialized() error {
-	dir, err := SecretsDir()
+	dir, err := StateDir()
 	if err != nil {
 		return err
 	}
 	if Exists(dir) {
 		return nil
 	}
-	return fmt.Errorf("not initialized, run 'git-secrets init'")
+	return fmt.Errorf("not initialized, run '%s init'", ToolName)
 }
