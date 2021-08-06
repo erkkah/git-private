@@ -9,12 +9,11 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-const errorExitCode = 126
-
 func main() {
 	args := os.Args
 	if len(args) < 2 {
-		usage("no input parameters provided")
+		usage()
+		os.Exit(1)
 	}
 
 	err := checkSetup()
@@ -24,8 +23,8 @@ func main() {
 		err = runCommand(cmd, os.Args[2:])
 	}
 	if err != nil {
-		fmt.Printf("%s: abort: %v\n", appName(), err)
-		os.Exit(errorExitCode)
+		fmt.Printf("%s: %v\n", appName(), err)
+		os.Exit(1)
 	}
 }
 
@@ -69,10 +68,23 @@ func appName() string {
 	return app
 }
 
-func usage(message string) {
-	fmt.Printf("%s: %s\n", appName(), message)
-	fmt.Println("usage: ...")
-	os.Exit(errorExitCode)
+func usage() {
+	fmt.Printf(`
+usage: %s [command] [options]
+
+commands:
+---------
+init
+add      <file>
+remove   <file>
+hide     [file...]
+reveal   [file...]
+keys list
+keys add [-env <var>] [-file <file>] [-id <id>] [key]
+keys remove <id>
+status
+
+`, appName())
 }
 
 func runCommand(cmd string, args []string) error {

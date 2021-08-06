@@ -2,7 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"path"
+	"text/tabwriter"
 
 	"github.com/erkkah/git-private/utils"
 )
@@ -13,7 +15,7 @@ func Status(_ []string) error {
 		return err
 	}
 	if !utils.Exists(stateDir) {
-		return fmt.Errorf("git-private not initialized in repo")
+		return fmt.Errorf("%s not initialized in repo", utils.ToolName)
 	}
 
 	files, err := utils.LoadFileList()
@@ -25,6 +27,8 @@ func Status(_ []string) error {
 	if err != nil {
 		return err
 	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
 	for _, file := range files.Files {
 		fullPath := path.Join(root, file.Path)
@@ -52,8 +56,10 @@ func Status(_ []string) error {
 			}
 		}
 
-		fmt.Printf("%s\t-\t%s\n", file.Path, status)
+		fmt.Fprintf(w, "%s\t[%s]\n", file.Path, status)
 	}
+	w.Flush()
+
 	return nil
 }
 

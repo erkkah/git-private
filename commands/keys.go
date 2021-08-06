@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"filippo.io/age"
 	"github.com/erkkah/git-private/utils"
@@ -21,7 +22,7 @@ func Keys(args []string) error {
 	flags := flag.NewFlagSet("keys", flag.ExitOnError)
 	flags.StringVar(&config.Identity, "id", "", "Key identity")
 	flags.StringVar(&config.KeyFromEnv, "env", "", "Load public key from environment variable")
-	flags.StringVar(&config.KeyFromFile, "file", "-", "Load public key from file (default stdin)")
+	flags.StringVar(&config.KeyFromFile, "file", "", "Load public key from file")
 	if len(args) > 1 {
 		flags.Parse(args[1:])
 	}
@@ -51,10 +52,16 @@ func Keys(args []string) error {
 				return fmt.Errorf("failed to load key from %q: %w", config.KeyFromFile, err)
 			}
 		} else {
-			return fmt.Errorf("use '-env' or '-file' to specify key source")
+			key = flags.Arg(0)
+			if key == "" {
+				return fmt.Errorf("no key specified")
+			}
 		}
 		return addKey(config.Identity, key)
 	case cmd == "remove":
+		if config.Identity == "" {
+			config.Identity = flags.Arg(0)
+		}
 		if config.Identity == "" {
 			return fmt.Errorf("specify identity of key to remove")
 		}
@@ -69,15 +76,16 @@ func listKeys() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Keys:")
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	for _, key := range keyList.Keys {
-		fmt.Printf("ID: %s, Type: %s\n", key.ID, key.Type)
+		fmt.Fprintf(w, "%s\t[%s]\n", key.ID, key.Type)
 	}
+	w.Flush()
 	return nil
 }
 
 func addKey(id string, key string) error {
-	sshKey, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(id))
+	sshKey, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 	if err == nil {
 		if id == "" {
 			id = strings.TrimSpace(comment)
@@ -85,14 +93,9 @@ func addKey(id string, key string) error {
 		if id == "" {
 			return fmt.Errorf("key has no comment, and no id specified")
 		}
-		/*
-			recipient, err := agessh.NewRSARecipient(sshKey)
-			if err != nil {
-				return err
-			}
-		*/
 		keyData := ssh.MarshalAuthorizedKey(sshKey)
-		return storeKey(utils.SSH, id, string(keyData))
+		keyString := strings.TrimSpace(string(keyData))
+		return storeKey(utils.SSH, id, keyString)
 	}
 
 	recipients, err := age.ParseRecipients(strings.NewReader(key))
@@ -123,6 +126,10 @@ func removeKey(id string) error {
 			continue
 		}
 		updatedList.Keys = append(updatedList.Keys, key)
+	}
+
+	if len(updatedList.Keys) == len(keyList.Keys) {
+		return fmt.Errorf("key %q not found", id)
 	}
 
 	err = utils.StoreKeyList(updatedList)
