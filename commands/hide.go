@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 
 	"filippo.io/age"
@@ -22,7 +21,12 @@ func Hide(args []string) error {
 		return err
 	}
 
-	flags := flag.NewFlagSet("hide", flag.ExitOnError)
+	var config struct {
+		Clean bool
+	}
+
+	flags := flag.NewFlagSet("hide [file]", flag.ExitOnError)
+	flags.BoolVar(&config.Clean, "clean", false, "Remove source files after encryption")
 	flags.Parse(args)
 
 	filesToHide := flags.Args()
@@ -59,18 +63,28 @@ func Hide(args []string) error {
 		if err != nil {
 			return err
 		}
+
+		if config.Clean {
+			fullPath, err := utils.RepoAbsolute(file)
+			if err != nil {
+				return err
+			}
+			err = os.Remove(fullPath)
+			if err != nil {
+				return fmt.Errorf("failed to remove source file after encryption: %w", err)
+			}
+		}
 	}
 
 	return nil
 }
 
 func encrypt(file string) error {
-	root, err := utils.GetGitRootPath()
+	fullPath, err := utils.RepoAbsolute(file)
 	if err != nil {
 		return err
 	}
 
-	fullPath := path.Join(root, file)
 	privatePath := fullPath + utils.PrivateExtension
 
 	recipients, err := getRecipients()
