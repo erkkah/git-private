@@ -8,8 +8,9 @@ import (
 	"text/tabwriter"
 
 	"filippo.io/age"
-	"github.com/erkkah/git-private/utils"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/erkkah/git-private/utils"
 )
 
 func Keys(args []string) error {
@@ -19,9 +20,9 @@ func Keys(args []string) error {
 		KeyFromFile string
 	}
 
-	flags := flag.NewFlagSet("keys", flag.ExitOnError)
-	flags.StringVar(&config.Identity, "id", "", "Key identity")
-	flags.StringVar(&config.KeyFromEnv, "env", "", "Load public key from environment variable")
+	flags := flag.NewFlagSet("keys <list|add|remove>", flag.ExitOnError)
+	flags.StringVar(&config.Identity, "id", "", "Key `identity` to add or remove")
+	flags.StringVar(&config.KeyFromEnv, "env", "", "Load public key from environment `variable`")
 	flags.StringVar(&config.KeyFromFile, "file", "", "Load public key from file")
 	if len(args) > 1 {
 		flags.Parse(args[1:])

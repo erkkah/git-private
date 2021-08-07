@@ -23,37 +23,12 @@ func Status(_ []string) error {
 		return fmt.Errorf("failed to load file list: %w", err)
 	}
 
-	root, err := utils.GetGitRootPath()
-	if err != nil {
-		return err
-	}
-
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
 	for _, file := range files.Files {
-		fullPath := path.Join(root, file.Path)
-
-		var status statusCode
-
-		if file.Hash == "" {
-			status = notHidden
-		} else {
-			privateFile := fullPath + utils.PrivateExtension
-			if !utils.Exists(privateFile) {
-				status = hiddenPrivateMissing
-			} else if !utils.Exists(fullPath) {
-				status = hiddenNotRevealed
-			} else {
-				hash, err := utils.GetFileHash(fullPath)
-				if err != nil {
-					return err
-				}
-				if hash == file.Hash {
-					status = hiddenInSync
-				} else {
-					status = hiddenModified
-				}
-			}
+		status, err := getFileStatus(file)
+		if err != nil {
+			return err
 		}
 
 		fmt.Fprintf(w, "%s\t[%s]\n", file.Path, status)
@@ -61,6 +36,39 @@ func Status(_ []string) error {
 	w.Flush()
 
 	return nil
+}
+
+func getFileStatus(file utils.SecureFile) (statusCode, error) {
+	root, err := utils.GetGitRootPath()
+	if err != nil {
+		return 0, err
+	}
+	fullPath := path.Join(root, file.Path)
+
+	var status statusCode
+
+	if file.Hash == "" {
+		status = notHidden
+	} else {
+		privateFile := fullPath + utils.PrivateExtension
+		if !utils.Exists(privateFile) {
+			status = hiddenPrivateMissing
+		} else if !utils.Exists(fullPath) {
+			status = hiddenNotRevealed
+		} else {
+			hash, err := utils.GetFileHash(fullPath)
+			if err != nil {
+				return 0, err
+			}
+			if hash == file.Hash {
+				status = hiddenInSync
+			} else {
+				status = hiddenModified
+			}
+		}
+	}
+
+	return status, nil
 }
 
 type statusCode int

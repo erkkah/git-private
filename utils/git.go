@@ -148,3 +148,19 @@ func RepoRelative(path string) (string, error) {
 
 	return path, nil
 }
+
+// RepoAbsolute converts the given path to an absolute path.
+// Provided paths must be within the current repo.
+func RepoAbsolute(pathWithinRepo string) (string, error) {
+	relative, err := RepoRelative(pathWithinRepo)
+	if err != nil {
+		return "", err
+	}
+
+	root, err := GetGitRootPath()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(root, relative), nil
+}

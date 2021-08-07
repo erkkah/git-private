@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -24,11 +25,13 @@ func Reveal(args []string) error {
 	var config struct {
 		KeyFromEnv  string
 		KeyFromFile string
+		Overwrite   bool
 	}
 
 	flags := flag.NewFlagSet("reveal", flag.ExitOnError)
-	flags.StringVar(&config.KeyFromEnv, "env", "", "Load private key from environment variable")
+	flags.StringVar(&config.KeyFromEnv, "env", "", "Load private key from environment `variable`")
 	flags.StringVar(&config.KeyFromFile, "file", "", "Load private key from file")
+	flags.BoolVar(&config.Overwrite, "force", false, "Overwrite existing target files")
 	flags.Parse(args)
 
 	err := utils.EnsureInitialized()
@@ -48,24 +51,25 @@ func Reveal(args []string) error {
 		return fmt.Errorf("use '-env' or '-file' to specify key source")
 	}
 
-	filesToReveal := flags.Args()
+	var filesToReveal []utils.SecureFile
+	fileList, err := utils.LoadFileList()
+	if err != nil {
+		return err
+	}
 
-	if len(filesToReveal) != 0 {
-		for i := range filesToReveal {
-			filesToReveal[i], err = utils.RepoRelative(filesToReveal[i])
-			if err != nil {
-				return err
+	if len(flags.Args()) != 0 {
+		for _, arg := range flags.Args() {
+			file, err := findFile(arg, fileList.Files)
+			if err == errNotFound {
+				return fmt.Errorf("file %q is not hidden", arg)
 			}
+			if err != nil {
+				return fmt.Errorf("failed to look up file: %w", err)
+			}
+			filesToReveal = append(filesToReveal, file)
 		}
 	} else {
-		fileList, err := utils.LoadFileList()
-		if err != nil {
-			return err
-		}
-
-		for _, file := range fileList.Files {
-			filesToReveal = append(filesToReveal, file.Path)
-		}
+		filesToReveal = fileList.Files
 	}
 
 	identity, err := agessh.ParseIdentity([]byte(key))
@@ -100,20 +104,56 @@ func Reveal(args []string) error {
 		}
 	}
 
+	revealed := 0
 	for _, file := range filesToReveal {
-		if strings.HasSuffix(file, utils.PrivateExtension) {
-			return fmt.Errorf("cannot decrypt to private version of file:, %q", file)
+		status, err := getFileStatus(file)
+		if err != nil {
+			return fmt.Errorf("failed to get file status: %w", err)
 		}
-
-		// ??? check status and follow force flag
-
-		err := decrypt(file, identity)
+		switch status {
+		case hiddenInSync:
+			continue
+		case hiddenPrivateMissing:
+			return fmt.Errorf("cannot reveal, private version of %q is missing", file.Path)
+		case hiddenModified:
+			if !config.Overwrite {
+				return fmt.Errorf("will not overwrite existing file %q without 'force' flag", file.Path)
+			}
+		case notHidden:
+			return fmt.Errorf("file %q is not hidden", file.Path)
+		case hiddenNotRevealed:
+		}
+		err = decrypt(file.Path, identity)
 		if err != nil {
 			return fmt.Errorf("decryption failed: %w", err)
 		}
+		revealed++
 	}
 
+	suffix := "s"
+	if revealed == 1 {
+		suffix = ""
+	}
+	fmt.Printf("%v file%s revealed\n", revealed, suffix)
+
 	return nil
+}
+
+var errNotFound = errors.New("not found")
+
+func findFile(path string, files []utils.SecureFile) (utils.SecureFile, error) {
+	repoPath, err := utils.RepoRelative(path)
+	if err != nil {
+		return utils.SecureFile{}, err
+	}
+
+	for _, file := range files {
+		if file.Path == repoPath {
+			return file, nil
+		}
+	}
+
+	return utils.SecureFile{}, errNotFound
 }
 
 func decrypt(file string, identity age.Identity) error {
