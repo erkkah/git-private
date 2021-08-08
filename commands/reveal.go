@@ -2,8 +2,6 @@ package commands
 
 import (
 	"bytes"
-	"crypto/ed25519"
-	"crypto/rsa"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,44 +9,26 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 
 	"filippo.io/age"
-	"filippo.io/age/agessh"
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/erkkah/git-private/utils"
 )
 
 func Reveal(args []string) error {
 	var config struct {
-		KeyFromEnv  string
 		KeyFromFile string
 		Overwrite   bool
 	}
 
 	flags := flag.NewFlagSet("reveal", flag.ExitOnError)
-	flags.StringVar(&config.KeyFromEnv, "env", "", "Load private key from environment `variable`")
-	flags.StringVar(&config.KeyFromFile, "file", "", "Load private key from file")
+	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
 	flags.BoolVar(&config.Overwrite, "force", false, "Overwrite existing target files")
 	flags.Parse(args)
 
 	err := utils.EnsureInitialized()
 	if err != nil {
 		return err
-	}
-
-	var key string
-	if config.KeyFromEnv != "" {
-		key = os.Getenv(config.KeyFromEnv)
-	} else if config.KeyFromFile != "" {
-		key, err = utils.ReadFromFileOrStdin(config.KeyFromFile)
-		if err != nil {
-			return fmt.Errorf("failed to load key from %q: %w", config.KeyFromFile, err)
-		}
-	} else {
-		return fmt.Errorf("use '-env' or '-file' to specify key source")
 	}
 
 	var filesToReveal []utils.SecureFile
@@ -72,39 +52,14 @@ func Reveal(args []string) error {
 		filesToReveal = fileList.Files
 	}
 
-	identity, err := agessh.ParseIdentity([]byte(key))
+	identity, err := loadPrivateKey(config.KeyFromFile)
 	if err != nil {
-		if _, needsPassword := err.(*ssh.PassphraseMissingError); needsPassword {
-			fmt.Print("Enter passphrase:")
-			passphrase, err := terminal.ReadPassword(0)
-			if err != nil {
-				return fmt.Errorf("failed to read passphrase")
-			}
-			parsedIdentity, err := ssh.ParseRawPrivateKeyWithPassphrase([]byte(key), passphrase)
-			if err != nil {
-				return fmt.Errorf("failed to load key, wrong passphrase?")
-			}
-
-			switch k := parsedIdentity.(type) {
-			case *ed25519.PrivateKey:
-				identity, err = agessh.NewEd25519Identity(*k)
-			case *rsa.PrivateKey:
-				identity, err = agessh.NewRSAIdentity(k)
-			default:
-				err = fmt.Errorf("unsupported SSH key type: %T", k)
-			}
-
-			if err != nil {
-				return err
-			}
-		} else if parsedIdentities, err := age.ParseIdentities(strings.NewReader(key)); err == nil && len(parsedIdentities) == 1 {
-			identity = parsedIdentities[0]
-		} else {
-			return fmt.Errorf("invalid key")
-		}
+		return err
 	}
 
 	revealed := 0
+	inSync := 0
+
 	for _, file := range filesToReveal {
 		status, err := getFileStatus(file)
 		if err != nil {
@@ -112,6 +67,7 @@ func Reveal(args []string) error {
 		}
 		switch status {
 		case hiddenInSync:
+			inSync++
 			continue
 		case hiddenPrivateMissing:
 			return fmt.Errorf("cannot reveal, private version of %q is missing", file.Path)
@@ -130,13 +86,17 @@ func Reveal(args []string) error {
 		revealed++
 	}
 
-	suffix := "s"
-	if revealed == 1 {
-		suffix = ""
-	}
-	fmt.Printf("%v file%s revealed\n", revealed, suffix)
+	fmt.Printf("%v file%s already in sync, %v file%s revealed\n", inSync, pluralSuffix(inSync), revealed, pluralSuffix(revealed))
 
 	return nil
+}
+
+func pluralSuffix(number int) string {
+	suffix := "s"
+	if number == 1 {
+		suffix = ""
+	}
+	return suffix
 }
 
 var errNotFound = errors.New("not found")

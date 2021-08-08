@@ -1,34 +1,49 @@
 package commands
 
 import (
+	"crypto/ed25519"
+	"crypto/rsa"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"text/tabwriter"
 
 	"filippo.io/age"
+	"filippo.io/age/agessh"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/erkkah/git-private/utils"
 )
 
 func Keys(args []string) error {
 	var config struct {
-		Identity    string
-		KeyFromEnv  string
-		KeyFromFile string
+		PubKeyID       string
+		PubKeyFromEnv  string
+		PubKeyFromFile string
+		KeyFromFile    string
 	}
 
-	flags := flag.NewFlagSet("keys <list|add|remove>", flag.ExitOnError)
-	flags.StringVar(&config.Identity, "id", "", "Key `identity` to add or remove")
-	flags.StringVar(&config.KeyFromEnv, "env", "", "Load public key from environment `variable`")
-	flags.StringVar(&config.KeyFromFile, "file", "", "Load public key from file")
-	if len(args) > 1 {
+	flags := flag.NewFlagSet("keys <list|add [key data]|remove>", flag.ExitOnError)
+	flags.StringVar(&config.PubKeyID, "id", "", "Key `identity` to add or remove")
+	flags.StringVar(&config.PubKeyFromEnv, "pubenv", "", "Load public key from environment `variable`")
+	flags.StringVar(&config.PubKeyFromFile, "pubfile", "", "Load public key from `file`")
+	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
+
+	if len(args) > 1 && !strings.HasPrefix(args[0], "-") {
 		flags.Parse(args[1:])
+	} else {
+		return fmt.Errorf("no keys command specified, expected <list|add|remove>")
 	}
 
 	err := utils.EnsureInitialized()
+	if err != nil {
+		return err
+	}
+
+	identity, err := loadPrivateKey(config.KeyFromFile)
 	if err != nil {
 		return err
 	}
@@ -40,40 +55,40 @@ func Keys(args []string) error {
 	}
 
 	switch {
-	case cmd == "" || cmd == "list":
-		return listKeys()
+	case cmd == "list":
+		return listKeys(identity)
 	case cmd == "add":
 		var key string
 
-		if config.KeyFromEnv != "" {
-			key = os.Getenv(config.KeyFromEnv)
-		} else if config.KeyFromFile != "" {
-			key, err = utils.ReadFromFileOrStdin(config.KeyFromFile)
+		if config.PubKeyFromEnv != "" {
+			key = os.Getenv(config.PubKeyFromEnv)
+		} else if config.PubKeyFromFile != "" {
+			key, err = utils.ReadFromFileOrStdin(config.PubKeyFromFile)
 			if err != nil {
-				return fmt.Errorf("failed to load key from %q: %w", config.KeyFromFile, err)
+				return fmt.Errorf("failed to load public key from %q: %w", config.PubKeyFromFile, err)
 			}
 		} else {
 			key = flags.Arg(0)
 			if key == "" {
-				return fmt.Errorf("no key specified")
+				return fmt.Errorf("no public key specified")
 			}
 		}
-		return addKey(config.Identity, key)
+		return addKey(identity, config.PubKeyID, key)
 	case cmd == "remove":
-		if config.Identity == "" {
-			config.Identity = flags.Arg(0)
+		if config.PubKeyID == "" {
+			config.PubKeyID = flags.Arg(0)
 		}
-		if config.Identity == "" {
+		if config.PubKeyID == "" {
 			return fmt.Errorf("specify identity of key to remove")
 		}
-		return removeKey(config.Identity)
+		return removeKey(identity, config.PubKeyID)
 	default:
 		return fmt.Errorf("unknown keys command %q", cmd)
 	}
 }
 
-func listKeys() error {
-	keyList, err := utils.LoadKeyList()
+func listKeys(identity age.Identity) error {
+	keyList, err := utils.LoadKeyList(identity)
 	if err != nil {
 		return err
 	}
@@ -85,7 +100,7 @@ func listKeys() error {
 	return nil
 }
 
-func addKey(id string, key string) error {
+func addKey(identity age.Identity, id string, key string) error {
 	sshKey, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 	if err == nil {
 		if id == "" {
@@ -96,7 +111,7 @@ func addKey(id string, key string) error {
 		}
 		keyData := ssh.MarshalAuthorizedKey(sshKey)
 		keyString := strings.TrimSpace(string(keyData))
-		return storeKey(utils.SSH, id, keyString)
+		return storeKey(identity, utils.SSH, id, keyString)
 	}
 
 	recipients, err := age.ParseRecipients(strings.NewReader(key))
@@ -112,11 +127,11 @@ func addKey(id string, key string) error {
 	if id == "" {
 		return fmt.Errorf("cannot add AGE key without id")
 	}
-	return storeKey(utils.AGE, id, key)
+	return storeKey(identity, utils.AGE, id, key)
 }
 
-func removeKey(id string) error {
-	keyList, err := utils.LoadKeyList()
+func removeKey(identity age.Identity, id string) error {
+	keyList, err := utils.LoadKeyList(identity)
 	if err != nil {
 		return err
 	}
@@ -133,7 +148,7 @@ func removeKey(id string) error {
 		return fmt.Errorf("key %q not found", id)
 	}
 
-	err = utils.StoreKeyList(updatedList)
+	err = utils.StoreKeyList(identity, updatedList)
 	if err != nil {
 		return err
 	}
@@ -141,8 +156,8 @@ func removeKey(id string) error {
 	return nil
 }
 
-func storeKey(keyType utils.KeyType, id string, keyData string) error {
-	keyList, err := utils.LoadKeyList()
+func storeKey(identity age.Identity, keyType utils.KeyType, id string, keyData string) error {
+	keyList, err := utils.LoadKeyList(identity)
 	if err != nil {
 		return err
 	}
@@ -159,9 +174,71 @@ func storeKey(keyType utils.KeyType, id string, keyData string) error {
 		Key:  keyData,
 	})
 
-	err = utils.StoreKeyList(keyList)
+	err = utils.StoreKeyList(identity, keyList)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func loadPrivateKey(loadFromFile string) (age.Identity, error) {
+	var key string
+	var err error
+
+	if loadFromFile != "" {
+		key, err = utils.ReadFromFileOrStdin(loadFromFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load key from %q: %w", loadFromFile, err)
+		}
+	} else {
+		key = os.Getenv(utils.PrivateKeyVariable)
+		if key == "" {
+			keyFile := os.Getenv(utils.PrivateKeyFileVariable)
+			if keyFile == "" {
+				return nil, fmt.Errorf("no private key provided, use -keyfile or environment variables %s or %s",
+					utils.PrivateKeyVariable, utils.PrivateKeyFileVariable)
+			}
+
+			keyData, err := ioutil.ReadFile(keyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read private key file %q: %w", keyFile, err)
+			}
+
+			key = string(keyData)
+		}
+	}
+
+	identity, err := agessh.ParseIdentity([]byte(key))
+	if err != nil {
+		if _, needsPassword := err.(*ssh.PassphraseMissingError); needsPassword {
+			fmt.Print("Enter passphrase:")
+			passphrase, err := terminal.ReadPassword(0)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read passphrase")
+			}
+			parsedIdentity, err := ssh.ParseRawPrivateKeyWithPassphrase([]byte(key), passphrase)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load key, wrong passphrase?")
+			}
+
+			switch k := parsedIdentity.(type) {
+			case *ed25519.PrivateKey:
+				identity, err = agessh.NewEd25519Identity(*k)
+			case *rsa.PrivateKey:
+				identity, err = agessh.NewRSAIdentity(k)
+			default:
+				err = fmt.Errorf("unsupported SSH key type: %T", k)
+			}
+
+			if err != nil {
+				return nil, err
+			}
+		} else if parsedIdentities, err := age.ParseIdentities(strings.NewReader(key)); err == nil && len(parsedIdentities) == 1 {
+			identity = parsedIdentities[0]
+		} else {
+			return nil, fmt.Errorf("invalid key")
+		}
+	}
+
+	return identity, nil
 }

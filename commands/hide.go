@@ -10,24 +10,25 @@ import (
 	"strings"
 
 	"filippo.io/age"
-	"filippo.io/age/agessh"
 
 	"github.com/erkkah/git-private/utils"
 )
 
 func Hide(args []string) error {
+	var config struct {
+		KeyFromFile string
+		Clean       bool
+	}
+
+	flags := flag.NewFlagSet("hide [file]", flag.ExitOnError)
+	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
+	flags.BoolVar(&config.Clean, "clean", false, "Remove source files after encryption")
+	flags.Parse(args)
+
 	err := utils.EnsureInitialized()
 	if err != nil {
 		return err
 	}
-
-	var config struct {
-		Clean bool
-	}
-
-	flags := flag.NewFlagSet("hide [file]", flag.ExitOnError)
-	flags.BoolVar(&config.Clean, "clean", false, "Remove source files after encryption")
-	flags.Parse(args)
 
 	filesToHide := flags.Args()
 
@@ -49,12 +50,25 @@ func Hide(args []string) error {
 		}
 	}
 
+	identity, err := loadPrivateKey(config.KeyFromFile)
+	if err != nil {
+		return err
+	}
+
+	recipients, err := utils.GetRecipients(identity)
+	if err != nil {
+		return fmt.Errorf("failed to load keys, cannot encrypt: %w", err)
+	}
+	if len(recipients) == 0 {
+		return fmt.Errorf("no keys added, cannot encrypt")
+	}
+
 	for _, file := range filesToHide {
 		if strings.HasSuffix(file, utils.PrivateExtension) {
 			return fmt.Errorf("cannot encrypt private file:, %q", file)
 		}
 
-		err := encrypt(file)
+		err := encrypt(file, recipients)
 		if err != nil {
 			return err
 		}
@@ -79,18 +93,13 @@ func Hide(args []string) error {
 	return nil
 }
 
-func encrypt(file string) error {
+func encrypt(file string, recipients []age.Recipient) error {
 	fullPath, err := utils.RepoAbsolute(file)
 	if err != nil {
 		return err
 	}
 
 	privatePath := fullPath + utils.PrivateExtension
-
-	recipients, err := getRecipients()
-	if len(recipients) == 0 {
-		return fmt.Errorf("no keys added, cannot encrypt")
-	}
 
 	buf := bytes.NewBuffer([]byte{})
 	encryptedWriter, err := age.Encrypt(buf, recipients...)
@@ -119,41 +128,6 @@ func encrypt(file string) error {
 	}
 
 	return nil
-}
-
-func getRecipients() ([]age.Recipient, error) {
-	keyList, err := utils.LoadKeyList()
-	if err != nil {
-		return nil, err
-	}
-
-	var recipients []age.Recipient
-
-	for _, key := range keyList.Keys {
-		var recipient age.Recipient
-
-		if key.Type == utils.AGE {
-			parsedRecipients, err := age.ParseRecipients(strings.NewReader(key.Key))
-			if err != nil {
-				return nil, err
-			}
-			if len(parsedRecipients) != 1 {
-				return nil, fmt.Errorf("unexpected key contents")
-			}
-			recipient = parsedRecipients[0]
-		} else if key.Type == utils.SSH {
-			recipient, err = agessh.ParseRecipient(key.Key)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, fmt.Errorf("unexpected key type %q", key.Type)
-		}
-
-		recipients = append(recipients, recipient)
-	}
-
-	return recipients, nil
 }
 
 func updateFileHash(file string) error {

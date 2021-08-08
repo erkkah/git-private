@@ -10,6 +10,9 @@ import (
 const PrivateExtension = ".private"
 const ToolName = "git-private"
 
+const PrivateKeyVariable = "GIT_PRIVATE_KEY"
+const PrivateKeyFileVariable = "GIT_PRIVATE_KEYFILE"
+
 func privateDir() string {
 	if val, exists := os.LookupEnv("GIT_PRIVATE_DIR"); exists {
 		return val
@@ -35,7 +38,7 @@ func KeysFile() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(dir, "keys.json"), nil
+	return path.Join(dir, "keys.dat"), nil
 }
 
 func PathsFile() (string, error) {

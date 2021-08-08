@@ -27,11 +27,6 @@ func Init(_ []string) error {
 		return err
 	}
 
-	err = utils.StoreKeyList(utils.KeyList{})
-	if err != nil {
-		return err
-	}
-
 	err = utils.GitAddIgnorePattern(fmt.Sprintf("!*%s", utils.PrivateExtension))
 	if err != nil {
 		return err
