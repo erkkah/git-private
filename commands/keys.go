@@ -130,14 +130,10 @@ func Keys(args []string) error {
 			return err
 		}
 
-		/*
-			passphrase, err := readPassphrase()
-			if err != nil {
-				return err
-			}
-		*/
-
-		passphrase := []byte("asdf")
+		passphrase, err := readPassphrase()
+		if err != nil {
+			return err
+		}
 
 		return exportGeneratedKey(generated, config.KeyFile, passphrase)
 
@@ -361,8 +357,7 @@ func parseProtectedKey(s string) (age.Identity, error) {
 				return nil, err
 			}
 
-			//passphrase, err := readPassphrase()
-			passphrase := "asdf"
+			passphrase, err := readPassphrase()
 			if err != nil {
 				return nil, fmt.Errorf("failed to read passphrase")
 			}
