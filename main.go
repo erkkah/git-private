@@ -80,8 +80,9 @@ remove   <file>
 hide     [file...]
 reveal   [file...]
 keys list
-keys add [-env <var>] [-file <file>] [-id <id>] [key]
-keys remove <id>
+keys add
+keys remove
+clean
 status
 
 `, appName())
@@ -95,11 +96,18 @@ func runCommand(cmd string, args []string) error {
 		"hide":   commands.Hide,
 		"reveal": commands.Reveal,
 		"keys":   commands.Keys,
+		"clean":  commands.Clean,
 		"status": commands.Status,
+		"help":   help,
 	}
 	command, found := cmds[cmd]
 	if !found {
 		return fmt.Errorf("command %q not found", cmd)
 	}
 	return command(args)
+}
+
+func help(_ []string) error {
+	usage()
+	return nil
 }
