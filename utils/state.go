@@ -60,7 +60,7 @@ func LoadKeyList(identity age.Identity) (KeyList, error) {
 
 	decrypted, err := age.Decrypt(reader, identity)
 	if err != nil {
-		return KeyList{}, err
+		return KeyList{}, fmt.Errorf("key list decryption failed")
 	}
 
 	err = loadFrom(decrypted, &list)
@@ -148,7 +148,7 @@ func storeTo(writer io.Writer, src interface{}) error {
 		return err
 	}
 
-	reader := bytes.NewBuffer(data)
+	reader := bytes.NewReader(data)
 	_, err = io.Copy(writer, reader)
 
 	if err != nil {

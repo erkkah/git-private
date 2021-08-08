@@ -110,8 +110,8 @@ func encrypt(file string, recipients []age.Recipient) error {
 
 	privatePath := fullPath + utils.PrivateExtension
 
-	buf := bytes.NewBuffer([]byte{})
-	encryptedWriter, err := age.Encrypt(buf, recipients...)
+	var buf bytes.Buffer
+	encryptedWriter, err := age.Encrypt(&buf, recipients...)
 	if err != nil {
 		return err
 	}

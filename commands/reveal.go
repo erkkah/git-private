@@ -135,8 +135,8 @@ func decrypt(file string, identity age.Identity) error {
 		return err
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	_, err = io.Copy(buf, decryptedReader)
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, decryptedReader)
 	if err != nil {
 		return err
 	}

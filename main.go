@@ -82,6 +82,7 @@ reveal   [file...]
 keys list
 keys add
 keys remove
+keys generate
 clean
 status
 
