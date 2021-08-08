@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"text/tabwriter"
 
 	"filippo.io/age"
@@ -57,6 +59,7 @@ func Keys(args []string) error {
 	switch {
 	case cmd == "list":
 		return listKeys(identity)
+
 	case cmd == "add":
 		var key string
 
@@ -243,9 +246,7 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 	identity, err := agessh.ParseIdentity([]byte(key))
 	if err != nil {
 		if _, needsPassword := err.(*ssh.PassphraseMissingError); needsPassword {
-			fmt.Print("Enter passphrase:")
-			passphrase, err := terminal.ReadPassword(0)
-			fmt.Println()
+			passphrase, err := readPassphrase()
 			if err != nil {
 				return nil, fmt.Errorf("failed to read passphrase")
 			}
@@ -274,4 +275,29 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 	}
 
 	return identity, nil
+}
+
+func readPassphrase() ([]byte, error) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT)
+	state, _ := terminal.GetState(syscall.Stdin)
+	go func() {
+		select {
+		case signal := <-signals:
+			if signal != nil && state != nil {
+				terminal.Restore(syscall.Stdin, state)
+				os.Exit(1)
+			}
+		}
+	}()
+	defer func() {
+		close(signals)
+		signal.Reset(syscall.SIGINT)
+	}()
+
+	fmt.Print("Enter passphrase:")
+	passphrase, err := terminal.ReadPassword(syscall.Stdin)
+	fmt.Println()
+
+	return passphrase, err
 }
