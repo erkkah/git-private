@@ -32,7 +32,7 @@ func Keys(args []string) error {
 	flags.StringVar(&config.PubKeyFromFile, "pubfile", "", "Load public key from `file`")
 	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
 
-	if len(args) > 1 && !strings.HasPrefix(args[0], "-") {
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		flags.Parse(args[1:])
 	} else {
 		return fmt.Errorf("no keys command specified, expected <list|add|remove>")
@@ -73,7 +73,15 @@ func Keys(args []string) error {
 				return fmt.Errorf("no public key specified")
 			}
 		}
-		return addKey(identity, config.PubKeyID, key)
+		err = addKey(identity, config.PubKeyID, key)
+		if err != nil {
+			return err
+		}
+		err = reHideFiles(identity)
+		if err != nil {
+			return fmt.Errorf("failed to re-encrypt files after key addition")
+		}
+
 	case cmd == "remove":
 		if config.PubKeyID == "" {
 			config.PubKeyID = flags.Arg(0)
@@ -81,10 +89,34 @@ func Keys(args []string) error {
 		if config.PubKeyID == "" {
 			return fmt.Errorf("specify identity of key to remove")
 		}
-		return removeKey(identity, config.PubKeyID)
+		err = removeKey(identity, config.PubKeyID)
+		if err != nil {
+			return err
+		}
+		err = reHideFiles(identity)
+		if err != nil {
+			return fmt.Errorf("failed to re-encrypt files after key removal")
+		}
+
 	default:
 		return fmt.Errorf("unknown keys command %q", cmd)
 	}
+
+	return nil
+}
+
+func reHideFiles(identity age.Identity) error {
+	fileList, err := utils.LoadFileList()
+	if err != nil {
+		return err
+	}
+
+	var paths []string
+	for _, file := range fileList.Files {
+		paths = append(paths, file.Path)
+	}
+
+	return hideFiles(identity, paths, false)
 }
 
 func listKeys(identity age.Identity) error {
@@ -94,7 +126,7 @@ func listKeys(identity age.Identity) error {
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	for _, key := range keyList.Keys {
-		fmt.Fprintf(w, "%s\t[%s]\n", key.ID, key.Type)
+		fmt.Fprintf(w, "%s\t[%s]\t(...%s)\n", key.ID, key.Type, key.Key[len(key.Key)-12:])
 	}
 	w.Flush()
 	return nil
@@ -213,6 +245,7 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 		if _, needsPassword := err.(*ssh.PassphraseMissingError); needsPassword {
 			fmt.Print("Enter passphrase:")
 			passphrase, err := terminal.ReadPassword(0)
+			fmt.Println()
 			if err != nil {
 				return nil, fmt.Errorf("failed to read passphrase")
 			}

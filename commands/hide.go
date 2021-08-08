@@ -55,6 +55,15 @@ func Hide(args []string) error {
 		return err
 	}
 
+	err = hideFiles(identity, filesToHide, config.Clean)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func hideFiles(identity age.Identity, filesToHide []string, clean bool) error {
 	recipients, err := utils.GetRecipients(identity)
 	if err != nil {
 		return fmt.Errorf("failed to load keys, cannot encrypt: %w", err)
@@ -78,7 +87,7 @@ func Hide(args []string) error {
 			return err
 		}
 
-		if config.Clean {
+		if clean {
 			fullPath, err := utils.RepoAbsolute(file)
 			if err != nil {
 				return err
