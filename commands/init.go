@@ -7,7 +7,7 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Init(_ []string) error {
+func Init(_ []string, _ func()) error {
 	stateDir, err := utils.StateDir()
 	if err != nil {
 		return err

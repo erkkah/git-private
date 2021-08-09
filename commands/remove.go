@@ -7,7 +7,7 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Remove(files []string) error {
+func Remove(files []string, _ func()) error {
 	err := utils.EnsureInitialized()
 	if err != nil {
 		return err

@@ -6,7 +6,7 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Add(files []string) error {
+func Add(files []string, _ func()) error {
 	err := utils.EnsureInitialized()
 	if err != nil {
 		return err

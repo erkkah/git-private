@@ -69,28 +69,29 @@ func appName() string {
 }
 
 func usage() {
-	fmt.Printf(`
-usage: %s [command] [options]
+	fmt.Fprintf(os.Stderr, `Usage:
+	%[1]s init
+	%[1]s add <FILE...>
+	%[1]s remove <FILE...>
+	%[1]s hide [-keyfile FILE] [-clean] [FILE...]
+	%[1]s reveal [-keyfile FILE] [-force] [FILE...]
+	%[1]s keys list [-keyfile FILE]
+	%[1]s keys add [-keyfile FILE] [-pubfile FILE] [-id ID] [public key]
+	%[1]s keys remove [-keyfile FILE] [-id ID] [ID]
+	%[1]s keys generate [-keyfile FILE] [-pubfile FILE]
+	%[1]s clean
+	%[1]s status
 
-commands:
----------
-init
-add      <file>
-remove   <file>
-hide     [file...]
-reveal   [file...]
-keys list
-keys add
-keys remove
-keys generate
-clean
-status
-
+Example:
+	$ git-private init
+	$ git-private add apikey.txt
+	$ git-private keys add -pubfile ~/.ssh/id_rsa.pub
+	$ git-private hide -keyfile ~/.ssh/id_rsa
 `, appName())
 }
 
 func runCommand(cmd string, args []string) error {
-	cmds := map[string]func([]string) error{
+	cmds := map[string]func([]string, func()) error{
 		"init":   commands.Init,
 		"add":    commands.Add,
 		"remove": commands.Remove,
@@ -105,10 +106,10 @@ func runCommand(cmd string, args []string) error {
 	if !found {
 		return fmt.Errorf("command %q not found", cmd)
 	}
-	return command(args)
+	return command(args, usage)
 }
 
-func help(_ []string) error {
+func help(_ []string, usage func()) error {
 	usage()
 	return nil
 }

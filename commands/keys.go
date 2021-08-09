@@ -23,19 +23,18 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Keys(args []string) error {
+func Keys(args []string, usage func()) error {
 	var config struct {
-		PubKeyID      string
-		PubKeyFromEnv string
-		PubKeyFile    string
-		KeyFile       string
+		PubKeyID   string
+		PubKeyFile string
+		KeyFile    string
 	}
 
 	flags := flag.NewFlagSet("keys <list|add [key data]|remove|generate>", flag.ExitOnError)
 	flags.StringVar(&config.PubKeyID, "id", "", "Key `identity` to add or remove")
-	flags.StringVar(&config.PubKeyFromEnv, "pubenv", "", "Load public key from environment `variable`")
 	flags.StringVar(&config.PubKeyFile, "pubfile", "", "Load / store public key from / to `file`")
 	flags.StringVar(&config.KeyFile, "keyfile", "", "Load / store private key from / to `file`")
+	flags.Usage = usage
 
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		flags.Parse(args[1:])
@@ -66,9 +65,7 @@ func Keys(args []string) error {
 	case cmd == "add":
 		var key string
 
-		if config.PubKeyFromEnv != "" {
-			key = os.Getenv(config.PubKeyFromEnv)
-		} else if config.PubKeyFile != "" {
+		if config.PubKeyFile != "" {
 			key, err = utils.ReadFromFileOrStdin(config.PubKeyFile)
 			if err != nil {
 				return fmt.Errorf("failed to load public key from %q: %w", config.PubKeyFile, err)

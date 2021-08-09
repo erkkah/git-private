@@ -14,7 +14,7 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Hide(args []string) error {
+func Hide(args []string, usage func()) error {
 	var config struct {
 		KeyFromFile string
 		Clean       bool
@@ -23,6 +23,7 @@ func Hide(args []string) error {
 	flags := flag.NewFlagSet("hide [file]", flag.ExitOnError)
 	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
 	flags.BoolVar(&config.Clean, "clean", false, "Remove source files after encryption")
+	flags.Usage = usage
 	flags.Parse(args)
 
 	err := utils.EnsureInitialized()

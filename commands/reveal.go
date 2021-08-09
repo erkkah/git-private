@@ -15,7 +15,7 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Reveal(args []string) error {
+func Reveal(args []string, usage func()) error {
 	var config struct {
 		KeyFromFile string
 		Overwrite   bool
@@ -24,6 +24,7 @@ func Reveal(args []string) error {
 	flags := flag.NewFlagSet("reveal", flag.ExitOnError)
 	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
 	flags.BoolVar(&config.Overwrite, "force", false, "Overwrite existing target files")
+	flags.Usage = usage
 	flags.Parse(args)
 
 	err := utils.EnsureInitialized()

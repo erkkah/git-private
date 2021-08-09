@@ -8,13 +8,14 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Clean(args []string) error {
+func Clean(args []string, usage func()) error {
 	var config struct {
 		Force bool
 	}
 
 	flags := flag.NewFlagSet("hide [file]", flag.ExitOnError)
 	flags.BoolVar(&config.Force, "force", false, "Force removal of out of sync files")
+	flags.Usage = usage
 	flags.Parse(args)
 
 	err := utils.EnsureInitialized()

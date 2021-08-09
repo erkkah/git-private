@@ -9,7 +9,7 @@ import (
 	"github.com/erkkah/git-private/utils"
 )
 
-func Status(_ []string) error {
+func Status(_ []string, _ func()) error {
 	stateDir, err := utils.StateDir()
 	if err != nil {
 		return err
