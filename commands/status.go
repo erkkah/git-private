@@ -25,6 +25,9 @@ func Status(_ []string, _ func()) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
+	if len(files.Files) == 0 {
+		fmt.Fprintln(w, "No private files")
+	}
 	for _, file := range files.Files {
 		status, err := getFileStatus(file)
 		if err != nil {
