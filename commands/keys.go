@@ -94,7 +94,7 @@ func Keys(args []string, usage func()) error {
 		if inSync {
 			err = reHideFiles(identity)
 			if err != nil {
-				return fmt.Errorf("Failed to re-encrypt files after key addition")
+				return fmt.Errorf("failed to re-encrypt files after key addition")
 			}
 		} else {
 			fmt.Fprintf(os.Stderr, "Files are not in sync, will not re-encrypt after key change. Use 'hide' and/or 'reveal' accordingly.")

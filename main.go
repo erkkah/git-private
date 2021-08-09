@@ -23,7 +23,7 @@ func main() {
 		err = runCommand(cmd, os.Args[2:])
 	}
 	if err != nil {
-		fmt.Printf("%s: %v\n", appName(), err)
+		fmt.Printf("%s error: %v\n", appName(), err)
 		os.Exit(1)
 	}
 }
