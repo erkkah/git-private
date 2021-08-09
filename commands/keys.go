@@ -375,12 +375,13 @@ func parseAGEIdentity(key []byte) (age.Identity, error) {
 func readPassphrase(prompt string) ([]byte, error) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT)
-	state, _ := terminal.GetState(syscall.Stdin)
+	stdinFd := os.Stdin.Fd()
+	state, _ := terminal.GetState(int(stdinFd))
 	go func() {
 		select {
 		case signal := <-signals:
 			if signal != nil && state != nil {
-				terminal.Restore(syscall.Stdin, state)
+				terminal.Restore(int(stdinFd), state)
 				os.Exit(1)
 			}
 		}
@@ -391,7 +392,7 @@ func readPassphrase(prompt string) ([]byte, error) {
 	}()
 
 	fmt.Print(prompt)
-	passphrase, err := terminal.ReadPassword(syscall.Stdin)
+	passphrase, err := terminal.ReadPassword(int(stdinFd))
 	fmt.Println()
 
 	return passphrase, err
