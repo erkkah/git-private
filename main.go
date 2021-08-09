@@ -79,7 +79,7 @@ func usage() {
 	%[1]s keys add [-keyfile FILE] [-pubfile FILE] [-id ID] [public key]
 	%[1]s keys remove [-keyfile FILE] [-id ID] [ID]
 	%[1]s keys generate [-keyfile FILE] [-pubfile FILE]
-	%[1]s clean
+	%[1]s clean [-force]
 	%[1]s status
 
 Example:

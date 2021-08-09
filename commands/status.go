@@ -38,6 +38,26 @@ func Status(_ []string, _ func()) error {
 	return nil
 }
 
+func areFilesInSync() (bool, error) {
+	files, err := utils.LoadFileList()
+	if err != nil {
+		return false, err
+	}
+
+	for _, file := range files.Files {
+		status, err := getFileStatus(file)
+		if err != nil {
+			return false, err
+		}
+
+		if status != hiddenInSync {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
 func getFileStatus(file utils.SecureFile) (statusCode, error) {
 	root, err := utils.GetGitRootPath()
 	if err != nil {
