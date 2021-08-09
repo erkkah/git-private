@@ -29,17 +29,17 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-    - name: Build for linux
-      run: mkdir linux && GOOS=linux GOARCH=amd64 go build -v -o linux/git-private .
+      - name: Build for linux
+        run: mkdir linux && GOOS=linux GOARCH=amd64 go build -v -o linux/git-private .
 
-    - name: Build for macintel
-      run: mkdir macintel && GOOS=darwin GOARCH=amd64 go build -v -o macintel/git-private .
+      - name: Build for macintel
+        run: mkdir macintel && GOOS=darwin GOARCH=amd64 go build -v -o macintel/git-private .
 
-    - name: Build for macarm
-      run: mkdir macarm && GOOS=darwin GOARCH=arm64 go build -v -o macarm/git-private .
+      - name: Build for macarm
+        run: mkdir macarm && GOOS=darwin GOARCH=arm64 go build -v -o macarm/git-private .
 
-    - name: Build for windows
-      run: mkdir windows && GOOS=windows GOARCH=amd64 go build -v -o windows/git-private.exe .
+      - name: Build for windows
+        run: mkdir windows && GOOS=windows GOARCH=amd64 go build -v -o windows/git-private.exe .
 
       - name: Pack release
         id: pack_release
