@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Set TAG
-        run: echo ::set-env name=TAG::$(echo ${GITHUB_REF:10})
+        run: echo "TAG=$(echo ${GITHUB_REF:10})" >> $GITHUB_ENV
 
       - name: Set ARCHIVE
-        run: echo ::set-env name=ARCHIVE::git-private-${TAG}.tgz
+        run: echo "ARCHIVE=git-private-${TAG}.tgz" >> $GITHUB_ENV
 
       - name: Set up Go
         uses: actions/setup-go@v2
