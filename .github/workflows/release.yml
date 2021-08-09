@@ -1,0 +1,63 @@
+name: Build and create release on tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Set TAG
+        run: echo ::set-env name=TAG::$(echo ${GITHUB_REF:10})
+
+      - name: Set ARCHIVE
+        run: echo ::set-env name=ARCHIVE::git-private-${TAG}.tgz
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.16
+        id: go
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+    - name: Build for linux
+      run: mkdir linux && GOOS=linux GOARCH=amd64 go build -v -o linux/git-private .
+
+    - name: Build for macintel
+      run: mkdir macintel && GOOS=darwin GOARCH=amd64 go build -v -o macintel/git-private .
+
+    - name: Build for macarm
+      run: mkdir macarm && GOOS=darwin GOARCH=arm64 go build -v -o macarm/git-private .
+
+    - name: Build for windows
+      run: mkdir windows && GOOS=windows GOARCH=amd64 go build -v -o windows/git-private.exe .
+
+      - name: Pack release
+        id: pack_release
+        run: tar czf $ARCHIVE linux macintel macarm windows
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@master
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ env.TAG }}
+          body: ""
+          draft: true
+      
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1.0.1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARCHIVE }}
+          asset_name: ${{ env.ARCHIVE }}
+          asset_content_type: application/tar+gzip
