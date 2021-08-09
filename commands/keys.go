@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"encoding/base32"
 	"flag"
 	"fmt"
 	"io"
@@ -26,16 +25,16 @@ import (
 
 func Keys(args []string) error {
 	var config struct {
-		PubKeyID       string
-		PubKeyFromEnv  string
-		PubKeyFromFile string
-		KeyFile        string
+		PubKeyID      string
+		PubKeyFromEnv string
+		PubKeyFile    string
+		KeyFile       string
 	}
 
 	flags := flag.NewFlagSet("keys <list|add [key data]|remove|generate>", flag.ExitOnError)
 	flags.StringVar(&config.PubKeyID, "id", "", "Key `identity` to add or remove")
 	flags.StringVar(&config.PubKeyFromEnv, "pubenv", "", "Load public key from environment `variable`")
-	flags.StringVar(&config.PubKeyFromFile, "pubfile", "", "Load public key from `file`")
+	flags.StringVar(&config.PubKeyFile, "pubfile", "", "Load / store public key from / to `file`")
 	flags.StringVar(&config.KeyFile, "keyfile", "", "Load / store private key from / to `file`")
 
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -44,16 +43,16 @@ func Keys(args []string) error {
 		return fmt.Errorf("no keys command specified, expected <list|add|remove|generate>")
 	}
 
-	err := utils.EnsureInitialized()
-	if err != nil {
-		return err
+	cmd := args[0]
+
+	if cmd != "generate" {
+		err := utils.EnsureInitialized()
+		if err != nil {
+			return err
+		}
 	}
 
-	cmd := "list"
-
-	if len(args) > 0 {
-		cmd = args[0]
-	}
+	var err error
 
 	switch {
 	case cmd == "list":
@@ -69,10 +68,10 @@ func Keys(args []string) error {
 
 		if config.PubKeyFromEnv != "" {
 			key = os.Getenv(config.PubKeyFromEnv)
-		} else if config.PubKeyFromFile != "" {
-			key, err = utils.ReadFromFileOrStdin(config.PubKeyFromFile)
+		} else if config.PubKeyFile != "" {
+			key, err = utils.ReadFromFileOrStdin(config.PubKeyFile)
 			if err != nil {
-				return fmt.Errorf("failed to load public key from %q: %w", config.PubKeyFromFile, err)
+				return fmt.Errorf("failed to load public key from %q: %w", config.PubKeyFile, err)
 			}
 		} else {
 			key = flags.Arg(0)
@@ -130,12 +129,23 @@ func Keys(args []string) error {
 			return err
 		}
 
-		passphrase, err := readPassphrase()
+		passphrase, err := readPassphrase("Enter passphrase:")
 		if err != nil {
 			return err
 		}
 
-		return exportGeneratedKey(generated, config.KeyFile, passphrase)
+		if len(passphrase) != 0 {
+			confirmed, err := readPassphrase("Confirm passphrase:")
+			if err != nil {
+				return err
+			}
+
+			if bytes.Compare(passphrase, confirmed) != 0 {
+				return fmt.Errorf("passphrases do not match")
+			}
+		}
+
+		return exportGeneratedKey(generated, config.KeyFile, config.PubKeyFile, passphrase)
 
 	default:
 		return fmt.Errorf("unknown keys command %q", cmd)
@@ -279,10 +289,19 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 		}
 	}
 
-	identity, err := agessh.ParseIdentity([]byte(key))
+	identity, err := parseSSHIdentity([]byte(key))
+	if err != nil {
+		identity, err = parseAGEIdentity([]byte(key))
+	}
+
+	return identity, nil
+}
+
+func parseSSHIdentity(key []byte) (age.Identity, error) {
+	identity, err := agessh.ParseIdentity(key)
 	if err != nil {
 		if _, needsPassword := err.(*ssh.PassphraseMissingError); needsPassword {
-			passphrase, err := readPassphrase()
+			passphrase, err := readPassphrase("Enter SSH key passphrase:")
 			if err != nil {
 				return nil, fmt.Errorf("failed to read passphrase")
 			}
@@ -303,19 +322,51 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 			if err != nil {
 				return nil, err
 			}
-		} else if parsedIdentity, err := parseProtectedKey(key); err == nil {
-			identity = parsedIdentity
-		} else if parsedIdentities, err := age.ParseIdentities(strings.NewReader(key)); err == nil && len(parsedIdentities) == 1 {
-			identity = parsedIdentities[0]
 		} else {
-			return nil, fmt.Errorf("invalid key")
+			return nil, err
 		}
 	}
 
 	return identity, nil
 }
 
-func readPassphrase() ([]byte, error) {
+func parseAGEIdentity(key []byte) (age.Identity, error) {
+	var ageMagic = []byte("age-encryption.org/")
+
+	if bytes.HasPrefix(key, ageMagic) {
+		passphrase, err := readPassphrase("Enter AGE key passphrase:")
+		if err != nil {
+			return nil, fmt.Errorf("failed to read passphrase")
+		}
+
+		identity, err := age.NewScryptIdentity(string(passphrase))
+		if err != nil {
+			return nil, err
+		}
+
+		reader := bytes.NewReader(key)
+		decryptor, err := age.Decrypt(reader, identity)
+		if err != nil {
+			return nil, err
+		}
+
+		var decrypted bytes.Buffer
+		_, err = io.Copy(&decrypted, decryptor)
+		if err != nil {
+			return nil, err
+		}
+
+		key = decrypted.Bytes()
+	}
+
+	if parsedIdentities, err := age.ParseIdentities(bytes.NewReader(key)); err == nil && len(parsedIdentities) == 1 {
+		return parsedIdentities[0], nil
+	}
+
+	return nil, fmt.Errorf("invalid key")
+}
+
+func readPassphrase(prompt string) ([]byte, error) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT)
 	state, _ := terminal.GetState(syscall.Stdin)
@@ -333,73 +384,16 @@ func readPassphrase() ([]byte, error) {
 		signal.Reset(syscall.SIGINT)
 	}()
 
-	fmt.Print("Enter passphrase:")
+	fmt.Print(prompt)
 	passphrase, err := terminal.ReadPassword(syscall.Stdin)
 	fmt.Println()
 
 	return passphrase, err
 }
 
-const secretKeyHRP = "AGE-SECRET-KEY-"
-const protectedKeyHRP = "GIT-PRIVATE-PROTECTED-KEY-"
-
-func parseProtectedKey(s string) (age.Identity, error) {
-	lines := strings.Split(s, "\n")
-
-	for _, line := range lines {
-		line := strings.TrimSpace(line)
-		if strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, protectedKeyHRP) {
-			encrypted, err := bech32ishUnpack(line)
-			if err != nil {
-				return nil, err
-			}
-
-			passphrase, err := readPassphrase()
-			if err != nil {
-				return nil, fmt.Errorf("failed to read passphrase")
-			}
-
-			identity, err := age.NewScryptIdentity(string(passphrase))
-			if err != nil {
-				return nil, err
-			}
-
-			reader := bytes.NewReader(encrypted)
-			decryptor, err := age.Decrypt(reader, identity)
-			if err != nil {
-				return nil, err
-			}
-
-			var decrypted bytes.Buffer
-			_, err = io.Copy(&decrypted, decryptor)
-			if err != nil {
-				return nil, err
-			}
-
-			secretKey := secretKeyHRP + decrypted.String()
-
-			identities, err := age.ParseIdentities(strings.NewReader(secretKey))
-			if err != nil {
-				return nil, err
-			}
-
-			if len(identities) == 0 {
-				return nil, fmt.Errorf("invalid secret key")
-			}
-
-			return identities[0], nil
-		}
-	}
-
-	return nil, fmt.Errorf("invalid protected key")
-}
-
-func exportGeneratedKey(key *age.X25519Identity, targetFile string, passphrase []byte) error {
+func exportGeneratedKey(key *age.X25519Identity, keyFile string, pubKeyFile string, passphrase []byte) error {
 	var target io.WriteCloser
-	target, err := os.Create(targetFile)
+	target, err := os.Create(keyFile)
 	if err != nil {
 		return err
 	}
@@ -415,20 +409,20 @@ func exportGeneratedKey(key *age.X25519Identity, targetFile string, passphrase [
 			return err
 		}
 
-		var buf bytes.Buffer
-		encrypter, err := age.Encrypt(&buf, passPhraseRecipient)
+		target, err = age.Encrypt(target, passPhraseRecipient)
 		if err != nil {
 			return err
 		}
 
-		// The secret key is bech32 encoded, we just trim off the HRP
-		private = strings.TrimPrefix(private, secretKeyHRP)
-		privateData := strings.NewReader(private)
-
-		io.Copy(encrypter, privateData)
-		encrypter.Close()
-
-		private, err = bech32ishPack(protectedKeyHRP, buf.Bytes())
+		publicKeyString := fmt.Sprintf("Public key: %v\n", public)
+		if pubKeyFile != "" {
+			err = ioutil.WriteFile(pubKeyFile, []byte(publicKeyString), 0600)
+			if err != nil {
+				return fmt.Errorf("failed to write public key file: %w", err)
+			}
+		} else {
+			fmt.Fprint(os.Stderr, publicKeyString)
+		}
 	}
 
 	timestamp := time.Now().Format(time.RFC3339)
@@ -438,42 +432,4 @@ func exportGeneratedKey(key *age.X25519Identity, targetFile string, passphrase [
 	}
 
 	return target.Close()
-}
-
-const bech32Charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
-
-var bech32Encoding = base32.NewEncoding(bech32Charset).WithPadding(base32.NoPadding)
-
-func bech32ishUnpack(s string) ([]byte, error) {
-	splitPoint := strings.LastIndex(s, "1")
-	if splitPoint < 1 || splitPoint+7 > len(s) {
-		return nil, fmt.Errorf("unexpected hrp data")
-	}
-
-	encoded := s[splitPoint+1:]
-	encoded = strings.ToLower(encoded)
-	decoder := base32.NewDecoder(bech32Encoding, strings.NewReader(encoded))
-
-	var decoded bytes.Buffer
-	_, err := io.Copy(&decoded, decoder)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unpack: %w", err)
-	}
-
-	data := decoded.Bytes()
-	return data, nil
-}
-
-func bech32ishPack(hrp string, data []byte) (string, error) {
-	var encoded bytes.Buffer
-	encoder := base32.NewEncoder(bech32Encoding, &encoded)
-
-	_, err := io.Copy(encoder, bytes.NewReader(data))
-	if err != nil {
-		return "", err
-	}
-	encoder.Close()
-
-	upper := strings.ToUpper(encoded.String())
-	return hrp + "1" + upper, nil
 }
