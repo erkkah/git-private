@@ -3,15 +3,22 @@ package utils
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 )
 
-func Exists(path string) bool {
+func Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
-	return err == nil
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }
 
 func Touch(path string) error {

@@ -19,6 +19,13 @@ func Add(files []string, _ func()) error {
 	var filesToAdd []string
 
 	for _, file := range files {
+		exists, err := utils.Exists(file)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("No such file: %q", file)
+		}
 		repoRelative, err := utils.RepoRelative(file)
 		if err != nil {
 			return err

@@ -132,7 +132,11 @@ func Keys(args []string, usage func()) error {
 		if config.KeyFile == "" {
 			return fmt.Errorf("use 'keyfile' flag to specify target file for generated key")
 		}
-		if utils.Exists(config.KeyFile) {
+		exists, err := utils.Exists(config.KeyFile)
+		if err != nil {
+			return err
+		}
+		if exists {
 			return fmt.Errorf("will not overwrite existing key file %q", config.KeyFile)
 		}
 

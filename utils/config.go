@@ -54,8 +54,12 @@ func EnsureInitialized() error {
 	if err != nil {
 		return err
 	}
-	if Exists(dir) {
+	exists, err := Exists(dir)
+	if exists {
 		return nil
+	}
+	if err != nil {
+		return err
 	}
 	return fmt.Errorf("not initialized, run '%s init'", ToolName)
 }

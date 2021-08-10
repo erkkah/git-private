@@ -50,7 +50,11 @@ func readIgnoreFile() ([]string, error) {
 		return nil, err
 	}
 
-	if !Exists(ignoreFile) {
+	exists, err := Exists(ignoreFile)
+	if err != nil {
+		return []string{}, err
+	}
+	if !exists {
 		return []string{}, nil
 	}
 

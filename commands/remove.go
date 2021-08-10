@@ -68,7 +68,11 @@ func removeFile(file string) error {
 	}
 
 	privateFile := file + utils.PrivateExtension
-	if utils.Exists(privateFile) {
+	exists, err := utils.Exists(privateFile)
+	if err != nil {
+		return err
+	}
+	if exists {
 		// revealFile(file) ???
 		err := os.Remove(privateFile)
 		if err != nil {

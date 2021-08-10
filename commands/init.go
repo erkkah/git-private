@@ -13,7 +13,11 @@ func Init(_ []string, _ func()) error {
 		return err
 	}
 
-	if utils.Exists(stateDir) {
+	exists, err := utils.Exists(stateDir)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return fmt.Errorf("already initialized")
 	}
 

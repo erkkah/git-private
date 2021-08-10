@@ -49,7 +49,12 @@ func LoadKeyList(identity age.Identity) (KeyList, error) {
 		return KeyList{}, err
 	}
 
-	if !Exists(file) {
+	exists, err := Exists(file)
+	if err != nil {
+		return KeyList{}, err
+	}
+
+	if !exists {
 		return KeyList{}, nil
 	}
 

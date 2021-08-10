@@ -14,7 +14,11 @@ func Status(_ []string, _ func()) error {
 	if err != nil {
 		return err
 	}
-	if !utils.Exists(stateDir) {
+	exists, err := utils.Exists(stateDir)
+	if err != nil {
+		return err
+	}
+	if !exists {
 		return fmt.Errorf("%s not initialized in repo", utils.ToolName)
 	}
 
@@ -74,9 +78,15 @@ func getFileStatus(file utils.SecureFile) (statusCode, error) {
 		status = notHidden
 	} else {
 		privateFile := fullPath + utils.PrivateExtension
-		if !utils.Exists(privateFile) {
+		if exists, err := utils.Exists(privateFile); !exists || err != nil {
+			if err != nil {
+				return 0, err
+			}
 			status = hiddenPrivateMissing
-		} else if !utils.Exists(fullPath) {
+		} else if exists, err := utils.Exists(fullPath); !exists || err != nil {
+			if err != nil {
+				return 0, err
+			}
 			status = hiddenNotRevealed
 		} else {
 			hash, err := utils.GetFileHash(fullPath)
