@@ -417,6 +417,12 @@ func exportGeneratedKey(key *age.X25519Identity, keyFile string, pubKeyFile stri
 		return err
 	}
 
+	cleanup := func(err error) error {
+		_ = target.Close()
+		_ = os.Remove(keyFile)
+		return err
+	}
+
 	public := key.Recipient().String()
 	private := key.String()
 
@@ -425,19 +431,19 @@ func exportGeneratedKey(key *age.X25519Identity, keyFile string, pubKeyFile stri
 	} else {
 		passPhraseRecipient, err := age.NewScryptRecipient(string(passphrase))
 		if err != nil {
-			return err
+			return cleanup(err)
 		}
 
 		target, err = age.Encrypt(target, passPhraseRecipient)
 		if err != nil {
-			return err
+			return cleanup(err)
 		}
 
 		publicKeyString := fmt.Sprintf("Public key: %v\n", public)
 		if pubKeyFile != "" {
 			err = ioutil.WriteFile(pubKeyFile, []byte(publicKeyString), 0600)
 			if err != nil {
-				return fmt.Errorf("failed to write public key file: %w", err)
+				return cleanup(fmt.Errorf("failed to write public key file: %w", err))
 			}
 		} else {
 			fmt.Fprint(os.Stderr, publicKeyString)
@@ -447,8 +453,13 @@ func exportGeneratedKey(key *age.X25519Identity, keyFile string, pubKeyFile stri
 	timestamp := time.Now().Format(time.RFC3339)
 	_, err = fmt.Fprintf(target, "# created: %v\n# public key: %v\n%v\n", timestamp, public, private)
 	if err != nil {
-		return err
+		return cleanup(err)
 	}
 
-	return target.Close()
+	err = target.Close()
+	if err != nil {
+		return cleanup(err)
+	}
+
+	return nil
 }

@@ -81,24 +81,39 @@ func StoreKeyList(identity age.Identity, list KeyList) error {
 		return err
 	}
 
+	if len(recipients) == 0 {
+		return fmt.Errorf("cannot update key list, no keys with read/write access")
+	}
+
 	file, err := KeysFile()
 	if err != nil {
 		return err
 	}
 
-	writer, err := os.Create(file)
-	if err != nil {
-		return err
-	}
+	var buf bytes.Buffer
 
-	encrypted, err := age.Encrypt(writer, recipients...)
+	encrypted, err := age.Encrypt(&buf, recipients...)
 	if err != nil {
 		return err
 	}
-	defer encrypted.Close()
 
 	list.Version = 1
-	return storeTo(encrypted, &list)
+	err = storeTo(encrypted, &list)
+	if err != nil {
+		return err
+	}
+
+	err = encrypted.Close()
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(file, buf.Bytes(), 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func LoadFileList() (FileList, error) {
