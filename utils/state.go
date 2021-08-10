@@ -21,9 +21,10 @@ const (
 )
 
 type Key struct {
-	Type KeyType
-	Key  string
-	ID   string
+	Type     KeyType
+	Key      string
+	ID       string
+	ReadOnly bool
 }
 
 type KeyList struct {
@@ -74,7 +75,8 @@ func StoreKeyList(identity age.Identity, list KeyList) error {
 		return err
 	}
 
-	recipients, err := getRecipientsFromKeylist(list)
+	// Get recipients with read/write access
+	recipients, err := getRecipientsFromKeylist(list, ReadWrite)
 	if err != nil {
 		return err
 	}
@@ -169,11 +171,21 @@ func store(file string, src interface{}) error {
 	return nil
 }
 
-func getRecipientsFromKeylist(keyList KeyList) ([]age.Recipient, error) {
+type KeyAccess string
+
+const (
+	ReadOnly  KeyAccess = "ro"
+	ReadWrite KeyAccess = "rw"
+)
+
+func getRecipientsFromKeylist(keyList KeyList, access KeyAccess) ([]age.Recipient, error) {
 	var recipients []age.Recipient
 	var err error
 
 	for _, key := range keyList.Keys {
+		if access == ReadWrite && key.ReadOnly {
+			continue
+		}
 		var recipient age.Recipient
 
 		if key.Type == AGE {
@@ -206,5 +218,5 @@ func GetRecipients(identity age.Identity) ([]age.Recipient, error) {
 		return nil, err
 	}
 
-	return getRecipientsFromKeylist(keyList)
+	return getRecipientsFromKeylist(keyList, ReadOnly)
 }

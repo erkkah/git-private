@@ -28,12 +28,14 @@ func Keys(args []string, usage func()) error {
 		PubKeyID   string
 		PubKeyFile string
 		KeyFile    string
+		ReadOnly   bool
 	}
 
 	flags := flag.NewFlagSet("keys <list|add [key data]|remove|generate>", flag.ExitOnError)
 	flags.StringVar(&config.PubKeyID, "id", "", "Key `identity` to add or remove")
 	flags.StringVar(&config.PubKeyFile, "pubfile", "", "Load / store public key from / to `file`")
 	flags.StringVar(&config.KeyFile, "keyfile", "", "Load / store private key from / to `file`")
+	flags.BoolVar(&config.ReadOnly, "readonly", false, "Added key can only be used to reveal files")
 	flags.Usage = usage
 
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -82,7 +84,11 @@ func Keys(args []string, usage func()) error {
 			return err
 		}
 
-		err = addKey(identity, config.PubKeyID, key)
+		access := utils.ReadWrite
+		if config.ReadOnly {
+			access = utils.ReadOnly
+		}
+		err = addKey(identity, config.PubKeyID, key, access)
 		if err != nil {
 			return err
 		}
@@ -181,13 +187,17 @@ func listKeys(identity age.Identity) error {
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	for _, key := range keyList.Keys {
-		fmt.Fprintf(w, "%s\t[%s]\t(...%s)\n", key.ID, key.Type, key.Key[len(key.Key)-12:])
+		modeString := "rw"
+		if key.ReadOnly {
+			modeString = "ro"
+		}
+		fmt.Fprintf(w, "%s\t(%s/%s)\t[...%s]\n", key.ID, key.Type, modeString, key.Key[len(key.Key)-12:])
 	}
 	w.Flush()
 	return nil
 }
 
-func addKey(identity age.Identity, id string, key string) error {
+func addKey(identity age.Identity, id string, key string, access utils.KeyAccess) error {
 	sshKey, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 	if err == nil {
 		if id == "" {
@@ -198,7 +208,7 @@ func addKey(identity age.Identity, id string, key string) error {
 		}
 		keyData := ssh.MarshalAuthorizedKey(sshKey)
 		keyString := strings.TrimSpace(string(keyData))
-		return storeKey(identity, utils.SSH, id, keyString)
+		return storeKey(identity, utils.SSH, id, keyString, access)
 	}
 
 	recipients, err := age.ParseRecipients(strings.NewReader(key))
@@ -214,7 +224,7 @@ func addKey(identity age.Identity, id string, key string) error {
 	if id == "" {
 		return fmt.Errorf("cannot add AGE key without id")
 	}
-	return storeKey(identity, utils.AGE, id, key)
+	return storeKey(identity, utils.AGE, id, key, access)
 }
 
 func removeKey(identity age.Identity, id string) error {
@@ -243,7 +253,7 @@ func removeKey(identity age.Identity, id string) error {
 	return nil
 }
 
-func storeKey(identity age.Identity, keyType utils.KeyType, id string, keyData string) error {
+func storeKey(identity age.Identity, keyType utils.KeyType, id string, keyData string, access utils.KeyAccess) error {
 	keyList, err := utils.LoadKeyList(identity)
 	if err != nil {
 		return err
@@ -255,10 +265,12 @@ func storeKey(identity age.Identity, keyType utils.KeyType, id string, keyData s
 		}
 	}
 
+	readOnly := access == utils.ReadOnly
 	keyList.Keys = append(keyList.Keys, utils.Key{
-		Type: keyType,
-		ID:   id,
-		Key:  keyData,
+		Type:     keyType,
+		ID:       id,
+		Key:      keyData,
+		ReadOnly: readOnly,
 	})
 
 	err = utils.StoreKeyList(identity, keyList)
