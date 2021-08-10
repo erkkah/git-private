@@ -87,7 +87,10 @@ func Reveal(args []string, usage func()) error {
 		revealed++
 	}
 
-	fmt.Printf("%v file%s already in sync, %v file%s revealed\n", inSync, pluralSuffix(inSync), revealed, pluralSuffix(revealed))
+	if inSync > 0 {
+		fmt.Printf("%v file%s already in sync, ", inSync, pluralSuffix(inSync))
+	}
+	fmt.Printf("%v file%s revealed\n", revealed, pluralSuffix(revealed))
 
 	return nil
 }
