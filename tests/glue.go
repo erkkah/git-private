@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"testing"
 
 	"github.com/erkkah/git-private/commands"
@@ -20,11 +21,45 @@ type Suite struct {
 	tests []NamedTest
 }
 
+func copyFile(src string, dst string, t *testing.T) {
+	data, err := ioutil.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ioutil.WriteFile(dst, data, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+const oneKey = "one.key"
+const onePublicKey = "one.pub"
+const anotherKey = "another.key"
+const anotherPublicKey = "another.pub"
+
+var cwd string
+
+func init() {
+	cwd, _ = os.Getwd()
+}
+
 func setupAndInit(t *testing.T) {
+	var err error
+
 	testDir := t.TempDir()
-	err := os.Chdir(testDir)
+
+	err = os.Chdir(cwd)
 	if err != nil {
 		t.Fatalf("Failed to move to test directory: %v", err)
+	}
+
+	for _, keyFile := range []string{oneKey, onePublicKey, anotherKey, anotherPublicKey} {
+		copyFile(path.Join("testkeys", keyFile), path.Join(testDir, keyFile), t)
+	}
+
+	err = os.Chdir(testDir)
+	if err != nil {
+		t.Fatalf("Failed to move to tmp directory: %v", err)
 	}
 
 	git := exec.Command("git", "init")

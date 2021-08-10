@@ -9,7 +9,7 @@ import (
 
 func TestAdd(t *testing.T) {
 	runAll(Suite{
-		name: "arg", tests: []NamedTest{
+		name: "add", tests: []NamedTest{
 			{"no args", testAddNoArgsFails},
 			{"no file", testAddNonExistingFileFails},
 			{"add single file", testAddSingleFileWorks},
@@ -20,14 +20,14 @@ func TestAdd(t *testing.T) {
 func testAddNoArgsFails(t *testing.T) {
 	err := commands.Add([]string{}, func() {})
 	if err == nil {
-		t.Fatal(err)
+		t.Fatal()
 	}
 }
 
 func testAddNonExistingFileFails(t *testing.T) {
 	err := commands.Add([]string{"nosuchfile"}, func() {})
 	if err == nil {
-		t.Fatal(err)
+		t.Fatal()
 	}
 }
 
