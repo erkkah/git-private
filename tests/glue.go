@@ -85,7 +85,7 @@ func makeFile(name string, t *testing.T) {
 func runAll(suite Suite, t *testing.T) {
 	for _, test := range suite.tests {
 		setupAndInit(t)
-		if !t.Run(suite.name+" - "+test.name, test.test) {
+		if !t.Run(suite.name+"-"+test.name, test.test) {
 			break
 		}
 	}
