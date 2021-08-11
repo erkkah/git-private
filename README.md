@@ -13,7 +13,7 @@ Encryption is provided by [age](https://github.com/FiloSottile/age), using eithe
 
 * [Install](#Installation) `git-private`
 * In your repo, run `git private init`
-* Add the public key of the first user (most likely you): `git private keys add -pubkey ~/.ssh/id_rsa.pub`
+* Add the key of the first user (most likely you): `git private keys add -keyfile ~/.ssh/id_rsa -pubfile ~/.ssh/id_rsa.pub`
 * Add your private file: `git private add apikeys.json`
 * Hide (encrypt) the added file: `git private hide -keyfile ~/.ssh/id_rsa`
 
@@ -25,10 +25,19 @@ Now, commit your changes. In this example, the changed files are:
 
 Note that:
 
+* the `keyfile` is used to identify **you** while the `pubfile` is the public key being added
+  * when the first key is added, the keyfile and pubfile belong to the same pair
 * the original file, `apikeys.json` is added to `.gitignore` automatically and is not commited
 * the `git-private` state lives in `.gitprivate/`
 * the `hide` command encrypts all files tracked by `git-private`
 * a user's private key should ***never*** be added to the git repo!
+
+## Private key configuration
+
+To avoid having to specify the private key file on the command line, use one of these environment variables instead:
+
+* `GIT_PRIVATE_KEY`="private key data"
+* `GIT_PRIVATE_KEYFILE`="path to private key file"
 
 ## Hiding files
 
@@ -74,13 +83,6 @@ Since `age` keys do not contain IDs, which is used to reference keys in `git-pri
 To simplify adoption of the tool, you can use existing `ssh` keys with `git-private`.
 
 *Note that `ssh-agent` is not supported. Passphrases need to be entered on each encryption operation.*
-
-### Configure private key
-
-To avoid having to specify the private key file on the command line, use one of these environment variables instead:
-
-* `GIT_PRIVATE_KEY`="private key data"
-* `GIT_PRIVATE_KEYFILE`="path to private key file"
 
 ## Checking status
 
