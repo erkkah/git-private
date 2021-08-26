@@ -98,7 +98,7 @@ The `status` command exits with code 0 (success) if all tracked files are in syn
 Get pre-built binaries from [github](https://github.com/erkkah/git-private), or install using your local go toolchain:
 
 ```shell
-$ go install github.com/erkkah/git-private
+$ go get github.com/erkkah/git-private
 ```
 
 ## CI/CD integration
