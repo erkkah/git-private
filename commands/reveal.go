@@ -19,11 +19,13 @@ func Reveal(args []string, usage func()) error {
 	var config struct {
 		KeyFromFile string
 		Overwrite   bool
+		Clean       bool
 	}
 
 	flags := flag.NewFlagSet("reveal", flag.ExitOnError)
 	flags.StringVar(&config.KeyFromFile, "keyfile", "", "Load private key from `file`")
 	flags.BoolVar(&config.Overwrite, "force", false, "Overwrite existing target files")
+	flags.BoolVar(&config.Clean, "clean", false, "Remove private files after revealing")
 	flags.Usage = usage
 	flags.Parse(args)
 
@@ -80,9 +82,9 @@ func Reveal(args []string, usage func()) error {
 			return fmt.Errorf("file %q is not hidden", file.Path)
 		case hiddenNotRevealed:
 		}
-		err = decrypt(file.Path, identity)
+		err = decrypt(file.Path, config.Clean, identity)
 		if err != nil {
-			return fmt.Errorf("decryption failed: %w", err)
+			return fmt.Errorf("reveal failed: %w", err)
 		}
 		revealed++
 	}
@@ -120,7 +122,7 @@ func findFile(path string, files []utils.SecureFile) (utils.SecureFile, error) {
 	return utils.SecureFile{}, errNotFound
 }
 
-func decrypt(file string, identity age.Identity) error {
+func decrypt(file string, clean bool, identity age.Identity) error {
 	root, err := utils.GetGitRootPath()
 	if err != nil {
 		return err
@@ -148,6 +150,13 @@ func decrypt(file string, identity age.Identity) error {
 	err = ioutil.WriteFile(fullPath, buf.Bytes(), 0660)
 	if err != nil {
 		return err
+	}
+
+	if clean {
+		err = os.Remove(privatePath)
+		if err != nil {
+			return fmt.Errorf("Revealed, but failed to remove private file: %w", err)
+		}
 	}
 
 	return nil

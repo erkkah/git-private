@@ -108,7 +108,7 @@ Then add the public key to the key list with read-only access (`git private keys
 
 Use the secure variables storage feature of your CI/CD system to store the private key, and make sure `git-private` can read the key from the `GIT_PRIVATE_KEY` environment variable.
 
-Now use the `reveal` command to reveal all files needed for the build.
+Now use the `reveal -clean` command to reveal all files needed for the build and remove the `.private` files to avoid distributing them with the build.
 
 ## Inspiration
 
