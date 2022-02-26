@@ -315,6 +315,9 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 	if err != nil {
 		identity, err = parseAGEIdentity([]byte(key))
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	return identity, nil
 }
@@ -385,7 +388,7 @@ func parseAGEIdentity(key []byte) (age.Identity, error) {
 		return parsedIdentities[0], nil
 	}
 
-	return nil, fmt.Errorf("invalid key")
+	return nil, fmt.Errorf("invalid key or passphase")
 }
 
 func readPassphrase(prompt string) ([]byte, error) {
