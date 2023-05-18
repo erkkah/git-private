@@ -26,21 +26,29 @@ func IsInsideGitTree() (bool, error) {
 	return false, err
 }
 
-func GetGitRootPath() (string, error) {
-	root, code, err := runGitCommand("rev-parse", "--show-toplevel")
-	if code == 0 {
-		return path.Clean(strings.TrimSpace(root)), nil
+func GetGitRootPath() (AbsolutePath, error) {
+	root, code, err := runGitCommand("rev-parse", "--path-format=relative", "--show-toplevel")
+	if code != 0 {
+		return "", err
 	}
-	return "", err
+
+	root = strings.TrimSpace(root)
+	root = path.Clean(root)
+	root, err = filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+
+	return AbsolutePath(root), nil
 }
 
-func getIgnoreFilePath() (string, error) {
+func getIgnoreFilePath() (AbsolutePath, error) {
 	root, err := GetGitRootPath()
 	if err != nil {
 		return "", err
 	}
 
-	ignoreFile := path.Join(root, ".gitignore")
+	ignoreFile := root.Join(".gitignore")
 	return ignoreFile, nil
 }
 
@@ -58,7 +66,7 @@ func readIgnoreFile() ([]string, error) {
 		return []string{}, nil
 	}
 
-	contents, err := os.ReadFile(ignoreFile)
+	contents, err := os.ReadFile(ignoreFile.Absolute())
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +80,7 @@ func writeIgnoreFile(lines []string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(ignoreFile, []byte(strings.Join(lines, "\n")), 0660)
+	err = os.WriteFile(ignoreFile.Absolute(), []byte(strings.Join(lines, "\n")), 0660)
 	if err != nil {
 		return err
 	}
@@ -129,42 +137,49 @@ func IsGitIgnored(fileName string) (bool, error) {
 	return false, err
 }
 
-// RepoRelative converts the given path to a path relative to the current repo.
-func RepoRelative(path string) (string, error) {
-	var err error
+type AbsolutePath string
+type RepoRelativePath string
 
-	if !filepath.IsAbs(path) {
-		path, err = filepath.Abs(path)
-		if err != nil {
-			return "", err
-		}
-	}
+func (ap AbsolutePath) Join(relative RepoRelativePath) AbsolutePath {
+	return AbsolutePath(path.Join(string(ap), string(relative)))
+}
+
+func (ap AbsolutePath) Open() (*os.File, error) {
+	return os.Open(ap.Absolute())
+}
+
+func (ap AbsolutePath) Absolute() string {
+	return string(ap)
+}
+
+func (rp RepoRelativePath) Relative() string {
+	return string(rp)
+}
+
+// RepoRelative converts the given path to a path relative to the current repo.
+func RepoRelative(path AbsolutePath) (RepoRelativePath, error) {
+	var err error
 
 	root, err := GetGitRootPath()
 	if err != nil {
 		return "", err
 	}
 
-	path, err = filepath.Rel(root, path)
+	relative, err := filepath.Rel(root.Absolute(), path.Absolute())
 	if err != nil {
 		return "", err
 	}
 
-	return path, nil
+	return RepoRelativePath(relative), nil
 }
 
 // RepoAbsolute converts the given path to an absolute path.
-// Provided paths must be within the current repo.
-func RepoAbsolute(pathWithinRepo string) (string, error) {
-	relative, err := RepoRelative(pathWithinRepo)
-	if err != nil {
-		return "", err
-	}
-
+// Provided paths must be relative to the current repo.
+func RepoAbsolute(pathWithinRepo RepoRelativePath) (AbsolutePath, error) {
 	root, err := GetGitRootPath()
 	if err != nil {
 		return "", err
 	}
 
-	return path.Join(root, relative), nil
+	return root.Join(pathWithinRepo), nil
 }

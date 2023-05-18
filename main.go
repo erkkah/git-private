@@ -33,7 +33,7 @@ func verifyStateDirIsNotIgnored() error {
 	if err != nil {
 		return err
 	}
-	ignored, err := utils.IsGitIgnored(stateDir)
+	ignored, err := utils.IsGitIgnored(stateDir.Absolute())
 
 	if err != nil {
 		return err

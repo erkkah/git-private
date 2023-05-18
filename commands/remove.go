@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/erkkah/git-private/utils"
 )
@@ -17,10 +18,14 @@ func Remove(files []string, _ func()) error {
 		return fmt.Errorf("no files to remove")
 	}
 
-	var filesToRemove []string
+	var filesToRemove []utils.RepoRelativePath
 
 	for _, file := range files {
-		repoRelative, err := utils.RepoRelative(file)
+		absolute, err := filepath.Abs(file)
+		if err != nil {
+			return err
+		}
+		repoRelative, err := utils.RepoRelative(utils.AbsolutePath(absolute))
 		if err != nil {
 			return err
 		}
@@ -35,9 +40,9 @@ func Remove(files []string, _ func()) error {
 	return nil
 }
 
-func removeFiles(files []string) error {
+func removeFiles(files []utils.RepoRelativePath) error {
 	for _, file := range files {
-		err := utils.GitRemoveIgnorePattern(file)
+		err := utils.GitRemoveIgnorePattern(file.Relative())
 		if err != nil {
 			return err
 		}
@@ -49,7 +54,7 @@ func removeFiles(files []string) error {
 	return nil
 }
 
-func removeFile(file string) error {
+func removeFile(file utils.RepoRelativePath) error {
 	fileList, err := utils.LoadFileList()
 	if err != nil {
 		return err
@@ -67,14 +72,17 @@ func removeFile(file string) error {
 		return err
 	}
 
-	privateFile := file + utils.PrivateExtension
+	privateFile, err := utils.RepoAbsolute(file + utils.PrivateExtension)
+	if err != nil {
+		return err
+	}
+
 	exists, err := utils.Exists(privateFile)
 	if err != nil {
 		return err
 	}
 	if exists {
-		// revealFile(file) ???
-		err := os.Remove(privateFile)
+		err := os.Remove(privateFile.Absolute())
 		if err != nil {
 			return err
 		}

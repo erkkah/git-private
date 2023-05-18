@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"filippo.io/age"
@@ -30,14 +31,20 @@ func Hide(args []string, usage func()) error {
 		return err
 	}
 
-	filesToHide := flags.Args()
+	var filesToHide []utils.RepoRelativePath
 
-	if len(filesToHide) != 0 {
-		for i := range filesToHide {
-			filesToHide[i], err = utils.RepoRelative(filesToHide[i])
+	fileArgs := flags.Args()
+	if len(fileArgs) != 0 {
+		for _, v := range fileArgs {
+			absolute, err := filepath.Abs(v)
 			if err != nil {
 				return err
 			}
+			file, err := utils.RepoRelative(utils.AbsolutePath(absolute))
+			if err != nil {
+				return err
+			}
+			filesToHide = append(filesToHide, file)
 		}
 	} else {
 		fileList, err := utils.LoadFileList()
@@ -63,7 +70,7 @@ func Hide(args []string, usage func()) error {
 	return nil
 }
 
-func hideFiles(identity age.Identity, filesToHide []string, clean bool) error {
+func hideFiles(identity age.Identity, filesToHide []utils.RepoRelativePath, clean bool) error {
 	recipients, err := utils.GetRecipients(identity)
 	if err != nil {
 		return fmt.Errorf("failed to load keys, cannot encrypt: %w", err)
@@ -73,7 +80,7 @@ func hideFiles(identity age.Identity, filesToHide []string, clean bool) error {
 	}
 
 	for _, file := range filesToHide {
-		if strings.HasSuffix(file, utils.PrivateExtension) {
+		if strings.HasSuffix(file.Relative(), utils.PrivateExtension) {
 			return fmt.Errorf("cannot encrypt private file:, %q", file)
 		}
 
@@ -92,7 +99,7 @@ func hideFiles(identity age.Identity, filesToHide []string, clean bool) error {
 			if err != nil {
 				return err
 			}
-			err = os.Remove(fullPath)
+			err = os.Remove(fullPath.Absolute())
 			if err != nil {
 				return fmt.Errorf("failed to remove source file after encryption: %w", err)
 			}
@@ -102,13 +109,13 @@ func hideFiles(identity age.Identity, filesToHide []string, clean bool) error {
 	return nil
 }
 
-func encrypt(file string, recipients []age.Recipient) error {
+func encrypt(file utils.RepoRelativePath, recipients []age.Recipient) error {
 	fullPath, err := utils.RepoAbsolute(file)
 	if err != nil {
 		return err
 	}
 
-	privatePath := fullPath + utils.PrivateExtension
+	privatePath := fullPath.Absolute() + utils.PrivateExtension
 
 	var buf bytes.Buffer
 	encryptedWriter, err := age.Encrypt(&buf, recipients...)
@@ -116,7 +123,7 @@ func encrypt(file string, recipients []age.Recipient) error {
 		return err
 	}
 
-	privateFile, err := os.Open(fullPath)
+	privateFile, err := fullPath.Open()
 	if err != nil {
 		return err
 	}
@@ -139,7 +146,7 @@ func encrypt(file string, recipients []age.Recipient) error {
 	return nil
 }
 
-func updateFileHash(file string) error {
+func updateFileHash(file utils.RepoRelativePath) error {
 	hash, err := utils.GetFileHash(file)
 	if err != nil {
 		return err

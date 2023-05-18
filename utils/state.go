@@ -32,7 +32,7 @@ type KeyList struct {
 }
 
 type SecureFile struct {
-	Path string
+	Path RepoRelativePath
 	Hash string
 }
 
@@ -57,7 +57,7 @@ func LoadKeyList(identity age.Identity) (KeyList, error) {
 		return KeyList{}, nil
 	}
 
-	reader, err := os.Open(file)
+	reader, err := file.Open()
 	if err != nil {
 		return KeyList{}, err
 	}
@@ -112,7 +112,7 @@ func StoreKeyList(identity age.Identity, list KeyList) error {
 		return err
 	}
 
-	err = os.WriteFile(file, buf.Bytes(), 0600)
+	err = os.WriteFile(file.Absolute(), buf.Bytes(), 0600)
 	if err != nil {
 		return err
 	}
@@ -151,8 +151,8 @@ func loadFrom(reader io.Reader, dest interface{}) error {
 	return nil
 }
 
-func load(file string, dest interface{}) error {
-	bytes, err := os.ReadFile(file)
+func load(file AbsolutePath, dest interface{}) error {
+	bytes, err := os.ReadFile(file.Absolute())
 	if err != nil {
 		return err
 	}
@@ -178,12 +178,12 @@ func storeTo(writer io.Writer, src interface{}) error {
 	return nil
 }
 
-func store(file string, src interface{}) error {
+func store(file AbsolutePath, src interface{}) error {
 	bytes, err := json.Marshal(src)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(file, bytes, 0600)
+	err = os.WriteFile(file.Absolute(), bytes, 0600)
 	if err != nil {
 		return err
 	}

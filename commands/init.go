@@ -21,7 +21,7 @@ func Init(_ []string, _ func()) error {
 		return fmt.Errorf("already initialized")
 	}
 
-	err = os.MkdirAll(stateDir, 0770)
+	err = os.MkdirAll(stateDir.Absolute(), 0770)
 	if err != nil {
 		return err
 	}
