@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -147,7 +146,7 @@ func decrypt(file string, clean bool, identity age.Identity) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(fullPath, buf.Bytes(), 0660)
+	err = os.WriteFile(fullPath, buf.Bytes(), 0660)
 	if err != nil {
 		return err
 	}

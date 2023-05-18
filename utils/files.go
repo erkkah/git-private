@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -51,9 +50,9 @@ func ReadFromFileOrStdin(file string) (string, error) {
 	var data []byte
 	var err error
 	if file == "-" {
-		data, err = ioutil.ReadAll(os.Stdin)
+		data, err = io.ReadAll(os.Stdin)
 	} else {
-		data, err = ioutil.ReadFile(file)
+		data, err = os.ReadFile(file)
 	}
 	if err != nil {
 		return "", err

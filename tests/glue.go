@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -22,11 +21,11 @@ type Suite struct {
 }
 
 func copyFile(src string, dst string, t *testing.T) {
-	data, err := ioutil.ReadFile(src)
+	data, err := os.ReadFile(src)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ioutil.WriteFile(dst, data, 0600)
+	err = os.WriteFile(dst, data, 0600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +76,7 @@ func setupAndInit(t *testing.T) {
 func makeFile(name string, t *testing.T) {
 	data := make([]byte, 5150)
 	rand.Read(data)
-	if ioutil.WriteFile(name, data, 0660) != nil {
+	if os.WriteFile(name, data, 0660) != nil {
 		t.Fatalf("Failed to create test file")
 	}
 }

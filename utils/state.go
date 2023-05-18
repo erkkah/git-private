@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -113,7 +112,7 @@ func StoreKeyList(identity age.Identity, list KeyList) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(file, buf.Bytes(), 0600)
+	err = os.WriteFile(file, buf.Bytes(), 0600)
 	if err != nil {
 		return err
 	}
@@ -141,7 +140,7 @@ func StoreFileList(list FileList) error {
 }
 
 func loadFrom(reader io.Reader, dest interface{}) error {
-	bytes, err := ioutil.ReadAll(reader)
+	bytes, err := io.ReadAll(reader)
 	if err != nil {
 		return err
 	}
@@ -153,7 +152,7 @@ func loadFrom(reader io.Reader, dest interface{}) error {
 }
 
 func load(file string, dest interface{}) error {
-	bytes, err := ioutil.ReadFile(file)
+	bytes, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
@@ -184,7 +183,7 @@ func store(file string, src interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(file, bytes, 0600)
+	err = os.WriteFile(file, bytes, 0600)
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -58,7 +58,7 @@ func readIgnoreFile() ([]string, error) {
 		return []string{}, nil
 	}
 
-	contents, err := ioutil.ReadFile(ignoreFile)
+	contents, err := os.ReadFile(ignoreFile)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func writeIgnoreFile(lines []string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(ignoreFile, []byte(strings.Join(lines, "\n")), 0660)
+	err = os.WriteFile(ignoreFile, []byte(strings.Join(lines, "\n")), 0660)
 	if err != nil {
 		return err
 	}
