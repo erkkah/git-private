@@ -54,7 +54,10 @@ func cleanFiles(filesToClean []utils.SecureFile, force bool) error {
 			}
 		}
 
-		err := os.Remove(file.Path)
+		absolute, err := utils.RepoAbsolute(file.Path)
+		if err == nil {
+			err = os.Remove(absolute.Absolute())
+		}
 		if err != nil {
 			return fmt.Errorf("failed to remove file %q: %w", file.Path, err)
 		}

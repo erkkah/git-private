@@ -17,7 +17,6 @@ import (
 	"filippo.io/age"
 	"filippo.io/age/agessh"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/term"
 
 	"github.com/erkkah/git-private/utils"
@@ -132,7 +131,7 @@ func Keys(args []string, usage func()) error {
 		if config.KeyFile == "" {
 			return fmt.Errorf("use 'keyfile' flag to specify target file for generated key")
 		}
-		exists, err := utils.Exists(config.KeyFile)
+		exists, err := utils.Exists(utils.AbsolutePath(config.KeyFile))
 		if err != nil {
 			return err
 		}
@@ -156,7 +155,7 @@ func Keys(args []string, usage func()) error {
 				return err
 			}
 
-			if bytes.Compare(passphrase, confirmed) != 0 {
+			if !bytes.Equal(passphrase, confirmed) {
 				return fmt.Errorf("passphrases do not match")
 			}
 		}
@@ -176,7 +175,7 @@ func reHideFiles(identity age.Identity) error {
 		return err
 	}
 
-	var paths []string
+	var paths []utils.RepoRelativePath
 	for _, file := range fileList.Files {
 		paths = append(paths, file.Path)
 	}
@@ -397,12 +396,10 @@ func readPassphrase(prompt string) ([]byte, error) {
 	stdinFd := os.Stdin.Fd()
 	state, _ := term.GetState(int(stdinFd))
 	go func() {
-		select {
-		case signal := <-signals:
-			if signal != nil && state != nil {
-				term.Restore(int(stdinFd), state)
-				os.Exit(1)
-			}
+		signal := <-signals
+		if signal != nil && state != nil {
+			term.Restore(int(stdinFd), state)
+			os.Exit(1)
 		}
 	}()
 	defer func() {
@@ -411,7 +408,7 @@ func readPassphrase(prompt string) ([]byte, error) {
 	}()
 
 	fmt.Print(prompt)
-	passphrase, err := terminal.ReadPassword(int(stdinFd))
+	passphrase, err := term.ReadPassword(int(stdinFd))
 	fmt.Println()
 
 	return passphrase, err

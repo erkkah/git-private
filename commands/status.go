@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"path"
 	"text/tabwriter"
 
 	"github.com/erkkah/git-private/utils"
@@ -70,7 +69,7 @@ func getFileStatus(file utils.SecureFile) (statusCode, error) {
 	if err != nil {
 		return 0, err
 	}
-	fullPath := path.Join(root, file.Path)
+	fullPath := root.Join(file.Path)
 
 	var status statusCode
 
@@ -89,7 +88,7 @@ func getFileStatus(file utils.SecureFile) (statusCode, error) {
 			}
 			status = hiddenNotRevealed
 		} else {
-			hash, err := utils.GetFileHash(fullPath)
+			hash, err := utils.GetFileHash(file.Path)
 			if err != nil {
 				return 0, err
 			}

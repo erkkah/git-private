@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/erkkah/git-private/utils"
 )
@@ -16,17 +17,25 @@ func Add(files []string, _ func()) error {
 		return fmt.Errorf("no files to add")
 	}
 
-	var filesToAdd []string
+	var filesToAdd []utils.RepoRelativePath
 
 	for _, file := range files {
-		exists, err := utils.Exists(file)
+		if !filepath.IsAbs(file) {
+			file, err = filepath.Abs(file)
+			if err != nil {
+				return err
+			}
+		}
+
+		absolute := utils.AbsolutePath(file)
+		exists, err := utils.Exists(absolute)
 		if err != nil {
 			return err
 		}
 		if !exists {
 			return fmt.Errorf("no such file: %q", file)
 		}
-		repoRelative, err := utils.RepoRelative(file)
+		repoRelative, err := utils.RepoRelative(absolute)
 		if err != nil {
 			return err
 		}
@@ -41,7 +50,7 @@ func Add(files []string, _ func()) error {
 	return nil
 }
 
-func addFiles(files []string) error {
+func addFiles(files []utils.RepoRelativePath) error {
 	fileList, err := utils.LoadFileList()
 	if err != nil {
 		return err
@@ -52,7 +61,7 @@ func addFiles(files []string) error {
 			fileList.Files = append(fileList.Files, utils.SecureFile{
 				Path: file,
 			})
-			err = utils.GitAddIgnorePattern(file)
+			err = utils.GitAddIgnorePattern(file.Relative())
 			if err != nil {
 				return err
 			}
@@ -67,7 +76,7 @@ func addFiles(files []string) error {
 	return nil
 }
 
-func hasFile(fileList utils.FileList, file string) bool {
+func hasFile(fileList utils.FileList, file utils.RepoRelativePath) bool {
 	for _, fileEntry := range fileList.Files {
 		if fileEntry.Path == file {
 			return true

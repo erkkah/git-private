@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 )
 
@@ -20,33 +19,33 @@ func privateDir() string {
 	return ".gitprivate"
 }
 
-func StateDir() (string, error) {
+func StateDir() (AbsolutePath, error) {
 	dir := privateDir()
 	if filepath.IsAbs(dir) {
-		return dir, nil
+		return AbsolutePath(dir), nil
 	}
 	root, err := GetGitRootPath()
 	if err != nil {
 		return "", err
 	}
-	path := path.Join(root, privateDir())
+	path := root.Join(RepoRelativePath(privateDir()))
 	return path, nil
 }
 
-func KeysFile() (string, error) {
+func KeysFile() (AbsolutePath, error) {
 	dir, err := StateDir()
 	if err != nil {
 		return "", err
 	}
-	return path.Join(dir, "keys.dat"), nil
+	return dir.Join("keys.dat"), nil
 }
 
-func PathsFile() (string, error) {
+func PathsFile() (AbsolutePath, error) {
 	dir, err := StateDir()
 	if err != nil {
 		return "", err
 	}
-	return path.Join(dir, "paths.json"), nil
+	return dir.Join("paths.json"), nil
 }
 
 func EnsureInitialized() error {

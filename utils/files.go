@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func Exists(path string) (bool, error) {
-	_, err := os.Stat(path)
+func Exists(path AbsolutePath) (bool, error) {
+	_, err := os.Stat(path.Absolute())
 	if err == nil {
 		return true, nil
 	}
@@ -20,17 +20,12 @@ func Exists(path string) (bool, error) {
 	return false, err
 }
 
-func Touch(path string) error {
-	file, err := os.OpenFile(path, os.O_CREATE, 0666)
+func GetFileHash(path RepoRelativePath) (string, error) {
+	absolute, err := RepoAbsolute(path)
 	if err != nil {
-		return err
+		return "", err
 	}
-	file.Close()
-	return nil
-}
-
-func GetFileHash(path string) (string, error) {
-	file, err := os.Open(path)
+	file, err := absolute.Open()
 	if err != nil {
 		return "", err
 	}

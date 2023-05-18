@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 
 	"filippo.io/age"
 
@@ -41,7 +41,11 @@ func Reveal(args []string, usage func()) error {
 
 	if len(flags.Args()) != 0 {
 		for _, arg := range flags.Args() {
-			file, err := findFile(arg, fileList.Files)
+			absolute, err := filepath.Abs(arg)
+			if err != nil {
+				return fmt.Errorf("failed to resolve path to %q", arg)
+			}
+			file, err := findFile(utils.AbsolutePath(absolute), fileList.Files)
 			if err == errNotFound {
 				return fmt.Errorf("file %q is not hidden", arg)
 			}
@@ -106,7 +110,7 @@ func pluralSuffix(number int) string {
 
 var errNotFound = errors.New("not found")
 
-func findFile(path string, files []utils.SecureFile) (utils.SecureFile, error) {
+func findFile(path utils.AbsolutePath, files []utils.SecureFile) (utils.SecureFile, error) {
 	repoPath, err := utils.RepoRelative(path)
 	if err != nil {
 		return utils.SecureFile{}, err
@@ -121,16 +125,16 @@ func findFile(path string, files []utils.SecureFile) (utils.SecureFile, error) {
 	return utils.SecureFile{}, errNotFound
 }
 
-func decrypt(file string, clean bool, identity age.Identity) error {
+func decrypt(file utils.RepoRelativePath, clean bool, identity age.Identity) error {
 	root, err := utils.GetGitRootPath()
 	if err != nil {
 		return err
 	}
 
-	fullPath := path.Join(root, file)
+	fullPath := root.Join(file)
 	privatePath := fullPath + utils.PrivateExtension
 
-	encrypted, err := os.Open(privatePath)
+	encrypted, err := privatePath.Open()
 	if err != nil {
 		return err
 	}
@@ -146,15 +150,15 @@ func decrypt(file string, clean bool, identity age.Identity) error {
 		return err
 	}
 
-	err = os.WriteFile(fullPath, buf.Bytes(), 0660)
+	err = os.WriteFile(fullPath.Absolute(), buf.Bytes(), 0660)
 	if err != nil {
 		return err
 	}
 
 	if clean {
-		err = os.Remove(privatePath)
+		err = os.Remove(privatePath.Absolute())
 		if err != nil {
-			return fmt.Errorf("Revealed, but failed to remove private file: %w", err)
+			return fmt.Errorf("revealed, but failed to remove private file: %w", err)
 		}
 	}
 
