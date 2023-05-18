@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"filippo.io/age/agessh"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/erkkah/git-private/utils"
 )
@@ -103,7 +103,7 @@ func Keys(args []string, usage func()) error {
 				return fmt.Errorf("failed to re-encrypt files after key addition")
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "Files are not in sync, will not re-encrypt after key change. Use 'hide' and/or 'reveal' accordingly.")
+			fmt.Fprintf(os.Stderr, "Files are not in sync, will not re-encrypt after key change. Use 'hide' and/or 'reveal' accordingly.\n")
 		}
 
 	case cmd == "remove":
@@ -302,7 +302,7 @@ func loadPrivateKey(loadFromFile string) (age.Identity, error) {
 					utils.PrivateKeyVariable, utils.PrivateKeyFileVariable)
 			}
 
-			keyData, err := ioutil.ReadFile(keyFile)
+			keyData, err := os.ReadFile(keyFile)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read private key file %q: %w", keyFile, err)
 			}
@@ -395,12 +395,12 @@ func readPassphrase(prompt string) ([]byte, error) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT)
 	stdinFd := os.Stdin.Fd()
-	state, _ := terminal.GetState(int(stdinFd))
+	state, _ := term.GetState(int(stdinFd))
 	go func() {
 		select {
 		case signal := <-signals:
 			if signal != nil && state != nil {
-				terminal.Restore(int(stdinFd), state)
+				term.Restore(int(stdinFd), state)
 				os.Exit(1)
 			}
 		}
@@ -448,7 +448,7 @@ func exportGeneratedKey(key *age.X25519Identity, keyFile string, pubKeyFile stri
 
 		publicKeyString := fmt.Sprintf("Public key: %v\n", public)
 		if pubKeyFile != "" {
-			err = ioutil.WriteFile(pubKeyFile, []byte(publicKeyString), 0600)
+			err = os.WriteFile(pubKeyFile, []byte(publicKeyString), 0600)
 			if err != nil {
 				return cleanup(fmt.Errorf("failed to write public key file: %w", err))
 			}

@@ -24,7 +24,7 @@ func Add(files []string, _ func()) error {
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("No such file: %q", file)
+			return fmt.Errorf("no such file: %q", file)
 		}
 		repoRelative, err := utils.RepoRelative(file)
 		if err != nil {
