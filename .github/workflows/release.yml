@@ -21,13 +21,13 @@ jobs:
         run: echo "ARCHIVE=git-private-${TAG}.tgz" >> $GITHUB_ENV
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
-          go-version: ^1.16
+          go-version: ^1.19
         id: go
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Run tests
         run: go test ./tests
@@ -49,18 +49,11 @@ jobs:
         run: tar czf $ARCHIVE linux macintel macarm windows
 
       - name: Create release
-        id: create_release
-        uses: actions/create-release@master
+        uses: softprops/action-gh-release@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ env.ARCHIVE }}
           tag_name: ${{ github.ref }}
           release_name: ${{ env.TAG }}
           body: ""
           draft: true
-      
-      - name: Upload release assets
-        uses: actions/upload-release-asset@v1.0.1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ARCHIVE }}
-          asset_name: ${{ env.ARCHIVE }}
-          asset_content_type: application/tar+gzip
