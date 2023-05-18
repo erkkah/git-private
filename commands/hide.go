@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -132,7 +131,7 @@ func encrypt(file string, recipients []age.Recipient) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(privatePath, buf.Bytes(), 0600)
+	err = os.WriteFile(privatePath, buf.Bytes(), 0600)
 	if err != nil {
 		return err
 	}
@@ -147,6 +146,9 @@ func updateFileHash(file string) error {
 	}
 
 	fileList, err := utils.LoadFileList()
+	if err != nil {
+		return err
+	}
 	for i, fileEntry := range fileList.Files {
 		if fileEntry.Path == file {
 			fileList.Files[i].Hash = hash

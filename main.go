@@ -76,9 +76,9 @@ func usage() {
 	%[1]s hide [-keyfile FILE] [-clean] [FILE...]
 	%[1]s reveal [-keyfile FILE] [-force] [FILE...]
 	%[1]s keys list [-keyfile FILE]
-	%[1]s keys add [-keyfile FILE] [-pubfile FILE] [-id ID] [-readonly] [public key]
-	%[1]s keys remove [-keyfile FILE] [-id ID] [ID]
-	%[1]s keys generate [-keyfile FILE] [-pubfile FILE]
+	%[1]s keys add [-keyfile FILE] [-id ID] [-readonly] <-pubfile FILE | public key>
+	%[1]s keys remove [-keyfile FILE] <-id ID | ID>
+	%[1]s keys generate -keyfile FILE [-pubfile FILE]
 	%[1]s clean [-force]
 	%[1]s status
 
